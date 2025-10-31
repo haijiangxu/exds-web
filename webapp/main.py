@@ -138,8 +138,9 @@ async def login_for_access_token(request: Request, form_data: OAuth2PasswordRequ
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-# 包含 v1 版本的路由, 并应用认证
-app.include_router(v1.router, dependencies=[Depends(get_current_active_user)])
+# 包含 v1 版本的路由
+app.include_router(v1.public_router) # 公开路由，无需认证
+app.include_router(v1.router, dependencies=[Depends(get_current_active_user)]) # 私有路由，需要认证
 
 @app.get("/", tags=["Root"], summary="应用根路径")
 def read_root():

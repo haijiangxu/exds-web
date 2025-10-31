@@ -2,21 +2,25 @@
 import os
 import tempfile
 import shutil
-from fastapi import APIRouter, Query, HTTPException, File, UploadFile, Form
+from fastapi import APIRouter, Query, HTTPException, File, UploadFile, Form, Response
 from webapp.tools.mongo import DATABASE
 from typing import List, Dict
 from datetime import datetime, timedelta
 import calendar
 import statistics
+from bson import json_util
+import json
 
 # 创建一个API路由器
-router = APIRouter(prefix="/api", tags=["v1"])
+router = APIRouter(prefix="/api/v1", tags=["v1"])
 
 # --- 集合定义 ---
 USER_COLLECTION = DATABASE['user_load_data']
 DA_PRICE_COLLECTION = DATABASE['day_ahead_spot_price']
 RT_PRICE_COLLECTION = DATABASE['real_time_spot_price']
 TOU_RULES_COLLECTION = DATABASE['tou_rules']
+PRICE_SGCC_COLLECTION = DATABASE['price_sgcc']
+
 
 # ##############################################################################
 # 现有分析API (Existing Analysis APIs)
@@ -251,3 +255,77 @@ def get_timeslot_analysis(month: str = Query(..., description="查询月份, 格
         return {"chart_data": chart_data, "stats": stats}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+# ##############################################################################
+# 国网代购电价API (SGCC Agency Price APIs)
+# ##############################################################################
+
+@router.get("/prices/sgcc", summary="获取国网代购电价数据(分页)")
+def get_sgcc_prices(page: int = 1, pageSize: int = 10):
+    """
+    从 price_sgcc 集合中分页获取数据文档, 并额外提供完整的图表数据。
+    - **排序**: 按月份ID（_id）降序排列.
+    - **分页**: 根据 page 和 pageSize 返回部分数据.
+    - **投影**: 排除 `pdf_binary_data` 字段以减少响应体积.
+    """
+    try:
+        # 获取总数
+        total = PRICE_SGCC_COLLECTION.count_documents({})
+
+        # 获取表格用的分页数据
+        page_cursor = PRICE_SGCC_COLLECTION.find({}, {'pdf_binary_data': 0})
+        page_cursor = page_cursor.sort('_id', -1).skip((page - 1) * pageSize).limit(pageSize)
+        page_data = list(page_cursor)
+
+        # 获取图表用的全量轻量级数据
+        chart_cursor = PRICE_SGCC_COLLECTION.find(
+            {},
+            {
+                '_id': 1, 
+                'purchase_price': 1, 
+                'avg_on_grid_price': 1, 
+                'purchase_scale_kwh': 1
+            }
+        ).sort('_id', 1) # 图表数据升序
+        chart_data = list(chart_cursor)
+
+        response = {
+            "total": total,
+            "pageData": page_data,
+            "chartData": chart_data
+        }
+        
+        return json.loads(json_util.dumps(response))
+
+    except Exception as e:
+        print(f"[DEBUG] Error in get_sgcc_prices: {e}")
+        raise HTTPException(status_code=500, detail=f"获取国网代购电价数据时出错: {str(e)}")
+
+
+# --- 公开路由，无需认证 ---
+public_router = APIRouter(prefix="/api/v1", tags=["v1-public"])
+
+@public_router.get("/prices/sgcc/{month}/pdf", summary="获取指定月份的国网代购电价PDF公告")
+def get_sgcc_price_pdf(month: str):
+    """
+    根据月份ID（例如, '2024-01'）获取对应的PDF文件.
+    - **查询**: 根据 `_id` 查找单个文档.
+    - **返回**: 如果找到PDF，则以流式响应返回；否则返回404错误.
+    """
+    try:
+        document = PRICE_SGCC_COLLECTION.find_one({'_id': month}, {'pdf_binary_data': 1, 'attachment_name': 1})
+        if document and 'pdf_binary_data' in document and document['pdf_binary_data']:
+            pdf_bytes = document['pdf_binary_data']
+            print(f"[DEBUG] Found PDF for month {month}. Size: {len(pdf_bytes)} bytes.")
+            attachment_name = document.get('attachment_name', f"sgcc_price_{month}.pdf")
+            
+            headers = {
+                'Content-Disposition': f'inline; filename="{attachment_name}"'
+            }
+            return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
+        else:
+            print(f"[DEBUG] PDF not found or empty for month {month}.")
+            raise HTTPException(status_code=404, detail=f"未找到月份 {month} 的PDF文件或文件为空.")
+    except Exception as e:
+        print(f"[DEBUG] Error in get_sgcc_price_pdf: {e}")
+        raise HTTPException(status_code=500, detail=f"获取PDF文件时出错: {str(e)}")

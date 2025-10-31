@@ -5,7 +5,6 @@ import {
     Routes,
     Route,
     Outlet,
-    useNavigate
 } from 'react-router-dom';
 import {
     Box,
@@ -25,17 +24,10 @@ import { LoadAnalysisPage } from './pages/LoadAnalysisPage';
 import { MarketPriceAnalysisPage } from './pages/MarketPriceAnalysisPage';
 import LoginPage from './pages/LoginPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import PlaceholderPage from './components/PlaceholderPage';
+import GridAgencyPricePage from './pages/GridAgencyPricePage';
 
 const drawerWidth = 260;
-
-// 一个简单的占位符组件
-const PagePlaceholder = ({ pageName }: { pageName: string }) => (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <Typography variant="h4" color="text.secondary">
-            {pageName} 页面建设中...
-        </Typography>
-    </Box>
-);
 
 // 主布局组件，包含导航和工具栏
 const MainLayout: React.FC = () => {
@@ -87,7 +79,6 @@ const MainLayout: React.FC = () => {
                         '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, borderRight: 'none' },
                     }}
                 >
-                    {/* Sidebar现在只负责显示，导航由路由处理 */}
                     <Sidebar />
                 </Drawer>
                 <Drawer
@@ -124,15 +115,55 @@ function App() {
                     <Route path="/login" element={<LoginPage />} />
                     <Route element={<ProtectedRoute />}>
                         <Route path="/" element={<MainLayout />}>
+                            {/* 默认页重定向到第一个有内容的页面 */}
                             <Route index element={<LoadAnalysisPage />} />
-                            <Route path="load-analysis" element={<LoadAnalysisPage />} />
-                            <Route path="market-price-analysis" element={<MarketPriceAnalysisPage />} />
-                            <Route path="data-import" element={<PagePlaceholder pageName="数据导入" />} />
-                            <Route path="home" element={<PagePlaceholder pageName="首页" />} />
-                            <Route path="master-data" element={<PagePlaceholder pageName="主数据管理" />} />
-                            <Route path="trading-desk" element={<PagePlaceholder pageName="交易管理" />} />
-                            <Route path="settlement" element={<PagePlaceholder pageName="结算管理" />} />
-                            <Route path="system" element={<PagePlaceholder pageName="系统管理" />} />
+
+                            {/* 菜单路由 */}
+                            <Route path="dashboard" element={<PlaceholderPage />} />
+                            
+                            {/* 客户管理 */}
+                            <Route path="customer/profiles" element={<PlaceholderPage />} />
+                            <Route path="customer/retail-packages" element={<PlaceholderPage />} />
+                            <Route path="customer/load-characteristics" element={<LoadAnalysisPage />} />
+                            <Route path="customer/cluster-analysis" element={<PlaceholderPage />} />
+
+                            {/* 负荷预测 */}
+                            <Route path="load-forecast/overall-analysis" element={<LoadAnalysisPage />} />
+                            <Route path="load-forecast/short-term" element={<PlaceholderPage />} />
+                            <Route path="load-forecast/accuracy-analysis" element={<PlaceholderPage />} />
+                            <Route path="load-forecast/long-term" element={<PlaceholderPage />} />
+
+                            {/* 价格预测 */}
+                            <Route path="price-forecast/market-analysis" element={<MarketPriceAnalysisPage />} />
+                            <Route path="price-forecast/d-2" element={<PlaceholderPage />} />
+                            <Route path="price-forecast/day-ahead" element={<PlaceholderPage />} />
+                            <Route path="price-forecast/monthly" element={<PlaceholderPage />} />
+
+                            {/* 交易决策 */}
+                            <Route path="trading-strategy/contract-curve" element={<PlaceholderPage />} />
+                            <Route path="trading-strategy/monthly" element={<PlaceholderPage />} />
+                            <Route path="trading-strategy/d-2" element={<PlaceholderPage />} />
+                            <Route path="trading-strategy/day-ahead" element={<PlaceholderPage />} />
+
+                            {/* 风险管理 */}
+                            <Route path="risk-management/deviation" element={<PlaceholderPage />} />
+                            <Route path="risk-management/exposure" element={<PlaceholderPage />} />
+
+                            {/* 结算管理 */}
+                            <Route path="settlement/pre-settlement" element={<PlaceholderPage />} />
+                            <Route path="settlement/bill-review" element={<PlaceholderPage />} />
+                            <Route path="settlement/profit-analysis" element={<PlaceholderPage />} />
+
+                            {/* 基础数据 */}
+                            <Route path="basic-data/grid-price" element={<GridAgencyPricePage />} />
+                            <Route path="basic-data/tou-definition" element={<PlaceholderPage />} />
+                            <Route path="basic-data/load-validation" element={<PlaceholderPage />} />
+
+                            {/* 系统管理 */}
+                            <Route path="system-settings/user-permissions" element={<PlaceholderPage />} />
+                            <Route path="system-settings/data-access" element={<PlaceholderPage />} />
+                            <Route path="system-settings/model-parameters" element={<PlaceholderPage />} />
+
                         </Route>
                     </Route>
                 </Routes>

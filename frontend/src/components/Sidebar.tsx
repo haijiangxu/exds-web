@@ -1,53 +1,152 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     List,
-    ListItem,
     ListItemButton,
     ListItemIcon,
     ListItemText,
     Divider,
     Toolbar,
-    ListSubheader,
-    Box
+    Box,
+    Collapse
 } from '@mui/material';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import HomeIcon from '@mui/icons-material/Home';
-import BackupTableIcon from '@mui/icons-material/BackupTable';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
-import TimelineIcon from '@mui/icons-material/Timeline';
-import PriceChangeIcon from '@mui/icons-material/PriceChange';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import PaymentIcon from '@mui/icons-material/Payment';
-import SettingsIcon from '@mui/icons-material/Settings';
-import LogoutIcon from '@mui/icons-material/Logout';
+import {
+    DashboardOutlined as DashboardIcon,
+    PeopleOutlined as PeopleIcon,
+    TimelineOutlined as TimelineIcon,
+    PriceChangeOutlined as PriceChangeIcon,
+    GavelOutlined as GavelIcon,
+    ShieldOutlined as ShieldIcon,
+    PaymentOutlined as PaymentIcon,
+    AssessmentOutlined as AssessmentIcon,
+    SettingsOutlined as SettingsIcon,
+    LogoutOutlined as LogoutIcon,
+    ExpandLess,
+    ExpandMore,
+    AccountBoxOutlined,
+    StyleOutlined,
+    ShowChartOutlined,
+    BubbleChartOutlined,
+    StackedLineChartOutlined,
+    QueryStatsOutlined,
+    RuleOutlined,
+    CalendarMonthOutlined,
+    AnalyticsOutlined,
+    CrisisAlertOutlined,
+    TrendingUpOutlined,
+    FunctionsOutlined,
+    FactCheckOutlined,
+    RequestQuoteOutlined,
+    VerifiedUserOutlined,
+    StorageOutlined,
+    ModelTrainingOutlined,
+    SourceOutlined,
+    VpnKeyOutlined,
+    BarChartOutlined
+} from '@mui/icons-material';
 
-// 定义菜单项的类型
-interface MenuItemDef {
+// 定义菜单项类型
+interface SubMenuItem {
     text: string;
-    icon?: React.ReactElement;
-    path?: string;
-    isHeader?: boolean;
+    path: string;
+    icon: React.ReactElement;
 }
 
-const menuItems: MenuItemDef[] = [
-    { text: '首页', icon: <HomeIcon />, path: '/home' },
-    { text: '数据中心', isHeader: true },
-    { text: '数据导入', icon: <UploadFileIcon />, path: '/data-import' },
-    { text: '主数据管理', icon: <BackupTableIcon />, path: '/master-data' },
-    { text: '分析与预测', isHeader: true },
-    { text: '总体负荷分析', icon: <TimelineIcon />, path: '/load-analysis' },
-    { text: '市场价格分析', icon: <PriceChangeIcon />, path: '/market-price-analysis' },
-    { text: '交易管理', isHeader: true },
-    { text: '市场申报', icon: <AssessmentIcon />, path: '/trading-desk' },
-    { text: '结算管理', isHeader: true },
-    { text: '用户电费测算', icon: <PaymentIcon />, path: '/settlement' },
-    { text: '系统管理', isHeader: true },
-    { text: '用户与权限', icon: <SettingsIcon />, path: '/system' },
+interface MenuItem {
+    text: string;
+    icon: React.ReactElement;
+    path?: string;
+    subItems?: SubMenuItem[];
+}
+
+// 根据系统菜单规划.md定义新的菜单结构
+const menuItems: MenuItem[] = [
+    { text: '交易总览', icon: <DashboardIcon />, path: '/dashboard' },
+    {
+        text: '客户管理',
+        icon: <PeopleIcon />,
+        subItems: [
+            { text: '客户档案管理', path: '/customer/profiles', icon: <AccountBoxOutlined /> },
+            { text: '零售套餐管理', path: '/customer/retail-packages', icon: <StyleOutlined /> },
+            { text: '客户负荷特性', path: '/customer/load-characteristics', icon: <ShowChartOutlined /> },
+            { text: '客户聚类分析', path: '/customer/cluster-analysis', icon: <BubbleChartOutlined /> },
+        ],
+    },
+    {
+        text: '负荷预测',
+        icon: <TimelineIcon />,
+        subItems: [
+            { text: '总体负荷分析', path: '/load-forecast/overall-analysis', icon: <StackedLineChartOutlined /> },
+            { text: '短期负荷预测', path: '/load-forecast/short-term', icon: <QueryStatsOutlined /> },
+            { text: '预测精度分析', path: '/load-forecast/accuracy-analysis', icon: <RuleOutlined /> },
+            { text: '中长期负荷预测', path: '/load-forecast/long-term', icon: <CalendarMonthOutlined /> },
+        ],
+    },
+    {
+        text: '价格预测',
+        icon: <PriceChangeIcon />,
+        subItems: [
+            { text: '市场价格分析', path: '/price-forecast/market-analysis', icon: <AnalyticsOutlined /> },
+            { text: 'D-2价格预测', path: '/price-forecast/d-2', icon: <CrisisAlertOutlined /> },
+            { text: '日前价格预测', path: '/price-forecast/day-ahead', icon: <TrendingUpOutlined /> },
+            { text: '月度价格预测', path: '/price-forecast/monthly', icon: <CalendarMonthOutlined /> },
+        ],
+    },
+    {
+        text: '交易决策',
+        icon: <GavelIcon />,
+        subItems: [
+            { text: '合同曲线生成', path: '/trading-strategy/contract-curve', icon: <FunctionsOutlined /> },
+            { text: '月度交易策略', path: '/trading-strategy/monthly', icon: <CalendarMonthOutlined /> },
+            { text: 'D-2交易策略', path: '/trading-strategy/d-2', icon: <CrisisAlertOutlined /> },
+            { text: '日前交易策略', path: '/trading-strategy/day-ahead', icon: <TrendingUpOutlined /> },
+        ],
+    },
+    {
+        text: '风险管理',
+        icon: <ShieldIcon />,
+        subItems: [
+            { text: '偏差风险监控', path: '/risk-management/deviation', icon: <RuleOutlined /> },
+            { text: '风险敞口分析', path: '/risk-management/exposure', icon: <BarChartOutlined /> },
+        ],
+    },
+    {
+        text: '结算管理',
+        icon: <PaymentIcon />,
+        subItems: [
+            { text: '交易预结算', path: '/settlement/pre-settlement', icon: <RequestQuoteOutlined /> },
+            { text: '平台账单复核', path: '/settlement/bill-review', icon: <FactCheckOutlined /> },
+            { text: '经营利润分析', path: '/settlement/profit-analysis', icon: <ShowChartOutlined /> },
+        ],
+    },
+    {
+        text: '基础数据',
+        icon: <AssessmentIcon />,
+        subItems: [
+            { text: '国网代购电价格', path: '/basic-data/grid-price', icon: <PriceChangeIcon /> },
+            { text: '分时电价划分', path: '/basic-data/tou-definition', icon: <StyleOutlined /> },
+            { text: '负荷数据校验', path: '/basic-data/load-validation', icon: <VerifiedUserOutlined /> },
+        ],
+    },
+    {
+        text: '系统管理',
+        icon: <SettingsIcon />,
+        subItems: [
+            { text: '用户与权限', path: '/system-settings/user-permissions', icon: <VpnKeyOutlined /> },
+            { text: '数据接入管理', path: '/system-settings/data-access', icon: <SourceOutlined /> },
+            { text: '预测模型参数', path: '/system-settings/model-parameters', icon: <ModelTrainingOutlined /> },
+        ],
+    },
 ];
 
 export const Sidebar: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const [open, setOpen] = useState<{ [key: string]: boolean }>({});
+
+    const handleClick = (text: string) => {
+        setOpen(prev => ({ ...prev, [text]: !prev[text] }));
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -58,38 +157,56 @@ export const Sidebar: React.FC = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Toolbar />
             <Divider />
-            <List component="nav" dense={true} sx={{ flexGrow: 1 }}>
+            <List component="nav" sx={{ flexGrow: 1, p: 1 }}>
                 {menuItems.map((item) => {
-                    if (item.isHeader) {
+                    if (item.subItems) {
+                        const isOpen = open[item.text] || item.subItems.some(sub => location.pathname.startsWith(sub.path));
                         return (
-                            <ListSubheader key={item.text} component="div" sx={{ bgcolor: 'inherit', mt: 1 }}>
-                                {item.text}
-                            </ListSubheader>
+                            <div key={item.text}>
+                                <ListItemButton onClick={() => handleClick(item.text)} sx={{ borderRadius: '8px' }}>
+                                    <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+                                    <ListItemText primary={item.text} />
+                                    {isOpen ? <ExpandLess /> : <ExpandMore />}
+                                </ListItemButton>
+                                <Collapse in={isOpen} timeout="auto" unmountOnExit>
+                                    <List component="div" disablePadding>
+                                        {item.subItems.map((subItem) => (
+                                            <ListItemButton
+                                                key={subItem.text}
+                                                component={Link}
+                                                to={subItem.path}
+                                                selected={location.pathname === subItem.path}
+                                                sx={{ pl: 4, borderRadius: '8px' }}
+                                            >
+                                                <ListItemIcon sx={{ minWidth: 40 }}>{subItem.icon}</ListItemIcon>
+                                                <ListItemText primary={subItem.text} />
+                                            </ListItemButton>
+                                        ))}
+                                    </List>
+                                </Collapse>
+                            </div>
                         );
                     }
                     return (
-                        <ListItem key={item.text} disablePadding sx={{ pl: 1, pr: 1}}>
-                            <ListItemButton 
-                                component={Link}
-                                to={item.path || '#'}
-                                selected={location.pathname === item.path || (location.pathname === '/' && item.path === '/load-analysis')}
-                                sx={{ borderRadius: '8px' }}
-                            >
-                                <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-                                <ListItemText primary={item.text} />
-                            </ListItemButton>
-                        </ListItem>
+                        <ListItemButton
+                            key={item.text}
+                            component={Link}
+                            to={item.path || '#'}
+                            selected={location.pathname === item.path}
+                            sx={{ borderRadius: '8px' }}
+                        >
+                            <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+                            <ListItemText primary={item.text} />
+                        </ListItemButton>
                     );
                 })}
             </List>
             <Divider />
-            <List component="nav" dense={true}>
-                <ListItem disablePadding sx={{ pl: 1, pr: 1}}>
-                    <ListItemButton onClick={handleLogout} sx={{ borderRadius: '8px' }}>
-                        <ListItemIcon sx={{ minWidth: 40 }}><LogoutIcon /></ListItemIcon>
-                        <ListItemText primary="退出登录" />
-                    </ListItemButton>
-                </ListItem>
+            <List component="nav" sx={{ p: 1 }}>
+                <ListItemButton onClick={handleLogout} sx={{ borderRadius: '8px' }}>
+                    <ListItemIcon sx={{ minWidth: 40 }}><LogoutIcon /></ListItemIcon>
+                    <ListItemText primary="退出登录" />
+                </ListItemButton>
             </List>
         </Box>
     );

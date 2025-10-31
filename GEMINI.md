@@ -51,12 +51,70 @@
     -   所有页面和组件**必须**采用移动端优先的响应式设计。
     -   应优先使用 Material-UI 的栅格 (`Grid`) 和断点 (`sx` 属性) 来实现响应式布局。
 -   **图表横屏查看:**
-    -   所有 `Recharts` 图表在移动端**必须**支持“横屏最大化”功能。
-    -   **实现方式:** 建议通过一个可复用的包装器组件实现，该组件在移动端提供一个最大化按钮，点击后调用浏览器的 **Fullscreen API** 和 **Screen Orientation API** 进入全屏横向锁定状态，并提供退出机制。
+    -   **强制要求**: 所有 `Recharts` 图表在移动端**必须**支持“横屏最大化”功能。
+    -   **实现方式**: **必须**使用项目内置的可复用 Hook `useChartFullscreen` 来实现此功能。该 Hook 位于 `frontend/src/hooks/useChartFullscreen.tsx`。
+    -   **使用方法**:
+        1.  在你的组件中，为图表的父容器创建一个 `ref`。
+        2.  调用 `useChartFullscreen` Hook，并传入 `ref` 和其他所需参数（如`title`, `onPrevious`, `onNext`）。
+        3.  在 JSX 中，根据 Hook 返回的 `isFullscreen` 状态和UI组件（`FullscreenEnterButton`, `FullscreenExitButton`等）来自由渲染全屏功能。
 
+        ```jsx
+        const {
+          isFullscreen,
+          FullscreenEnterButton,
+          FullscreenExitButton,
+          FullscreenTitle,
+          NavigationButtons
+        } = useChartFullscreen({
+          chartRef,
+          title: `...`,
+          onPrevious: handlePrevious,
+          onNext: handleNext,
+        });
+
+        return (
+          <Box ref={chartRef} sx={{...}}>
+            <FullscreenEnterButton />
+            <FullscreenExitButton />
+            <FullscreenTitle />
+            <NavigationButtons />
+            <ResponsiveContainer> ... </ResponsiveContainer>
+          </Box>
+        );
+        ```
 ## 技术优化建议
 
 以下是为提升项目可维护性和开发效率的建议，可在未来的迭代中考虑引入：
 
 -   **前端状态管理:** 考虑使用 **Zustand** 来管理全局状态（如用户信息），以简化逻辑、提升性能。
 -   **前端数据请求:** 考虑使用 **TanStack Query** (原 React Query) 来替代手动的 `useEffect` + `axios` 模式，以自动化管理数据缓存、加载和错误状态。
+
+## 4. 特别注意事项
+
+### Material-UI Grid 组件语法
+
+- **问题**: 本项目使用的 Material-UI v7 版本，其 `Grid` 组件的 API 与 v5 等常见版本**不兼容**。
+- **错误语法**: 直接使用 `item` 属性或仅使用 `xs`, `md` 等断点属性（如 `<Grid item xs={12}>` 或 `<Grid xs={12}>`）会导致编译错误。
+- **正确语法**: **必须**使用 `size` 属性来传递响应式断点，示例如下：
+
+  ```jsx
+  <Grid container spacing={2}>
+    <Grid size={{ xs: 12, md: 6 }}>
+      {/* ...内容... */}
+    </Grid>
+    <Grid size={{ xs: 12, md: 6 }}>
+      {/* ...内容... */}
+    </Grid>
+  </Grid>
+  ```
+
+- **强制要求**: 后续所有涉及 `Grid` 组件的开发，**必须**遵循 `size` 属性的语法。
+
+## 5. 前端开发工作流
+
+- **目标**: 实现前端编译错误的自主、快速诊断，减少对用户的人工依赖。
+- **启动命令**: 在开始前端开发任务时，**必须**首先在后台启动开发服务器，并将日志输出到指定文件。命令如下：
+  ```shell
+  npm start --prefix frontend > C:\Users\haiji.DESKTOP-TUMCEUG\.gemini\tmp\86e345d65824066fba62416e4de3c72495f15be1941b009daf202979c9ee0a7e\frontend_dev.log 2>&1 &
+  ```
+- **错误处理**: 当用户报告“有编译错误”时，我的**首要行动**是使用 `read_file` 工具读取上述 `frontend_dev.log` 文件的内容，以获取详细错误信息，然后进行修复。
