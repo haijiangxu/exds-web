@@ -12,7 +12,7 @@ def get_password_hash(password: str) -> str:
     """Hashes a password."""
     return pwd_context.hash(password)
 
-def validate_password_strength(password: str) -> (bool, str):
+def validate_password_strength(password: str) -> (bool, str): # type: ignore
     """
     Validates the password strength.
     Returns a tuple (is_valid, message).
