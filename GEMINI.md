@@ -82,6 +82,15 @@
           </Box>
         );
         ```
+
+-   **图表曲线选择:**
+    -   **强制要求**: 对于需要用户交互式选择显示/隐藏图表曲线的场景，**必须**使用项目内置的可复用 Hook `useSelectableSeries` 来实现此功能。该 Hook 位于 `frontend/src/hooks/useSelectableSeries.tsx`。
+    -   **使用方法**: 请参考 `docs/技术方案与编码规范.md` 中 `3.8.2. useSelectableSeries` 的详细说明。
+
+-   **通用可复用 Hook 使用原则:**
+    -   在开发新的图表功能或交互时，**必须**首先检查 `frontend/src/hooks/` 目录下是否存在已有的可复用 Hook。如有，应优先使用，避免重复造轮子。
+    -   如果现有 Hook 无法满足需求，且该功能具有通用性，应考虑将其封装为新的可复用 Hook，并更新相关文档。
+
 ## 技术优化建议
 
 以下是为提升项目可维护性和开发效率的建议，可在未来的迭代中考虑引入：
@@ -115,6 +124,10 @@
 - **目标**: 实现前端编译错误的自主、快速诊断，减少对用户的人工依赖。
 - **启动命令**: 在开始前端开发任务时，**必须**首先在后台启动开发服务器，并将日志输出到指定文件。命令如下：
   ```shell
-  npm start --prefix frontend > C:\Users\haiji.DESKTOP-TUMCEUG\.gemini\tmp\86e345d65824066fba62416e4de3c72495f15be1941b009daf202979c9ee0a7e\frontend_dev.log 2>&1 &
+  npm start --prefix frontend > ~\.gemini\tmp\86e345d65824066fba62416e4de3c72495f15be1941b009daf202979c9ee0a7e\frontend_dev.log 2>&1 &
   ```
 - **错误处理**: 当用户报告“有编译错误”时，我的**首要行动**是使用 `read_file` 工具读取上述 `frontend_dev.log` 文件的内容，以获取详细错误信息，然后进行修复。
+
+
+# 项目其他要求：
+## 一律用中文简体回复

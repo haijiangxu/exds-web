@@ -33,6 +33,7 @@ import {
 } from 'recharts';
 import { useChartFullscreen } from '../hooks/useChartFullscreen';
 import { MobileDataCard } from '../components/MobileDataCard';
+import { useSelectableSeries } from '../hooks/useSelectableSeries';
 
 // 对应后端 price_sgcc 集合的文档结构
 interface SGCCPriceData {
@@ -56,12 +57,15 @@ interface PaginatedSgccResponse {
     chartData: SGCCPriceData[];
 }
 
+// Define a type for chart series keys
+type SeriesKey = 'purchase_scale_kwh' | 'purchase_price' | 'avg_on_grid_price';
+
 // 小卡片组件
 const StatCard: React.FC<{ title: string; value: string; icon: React.ReactElement<SvgIconProps>; color?: string }> = ({ title, value, icon, color }) => (
     <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', height: '100%' }} elevation={2}>
         {React.cloneElement(icon, { sx: { fontSize: 40, color: color || 'primary.main', mr: 2 } })}
         <Box>
-            <Typography variant="subtitle2" color="text.secondary">{title}</Typography>
+            <Typography variant="h6" color="text.secondary">{title}</Typography>
             <Typography variant="h5" component="div" fontWeight="bold">{value}</Typography>
         </Box>
     </Paper>
@@ -78,6 +82,12 @@ const GridAgencyPricePage: React.FC = () => {
     const [chartData, setChartData] = useState<SGCCPriceData[]>([]);
     const [latestData, setLatestData] = useState<SGCCPriceData | null>(null);
 
+    const { seriesVisibility, handleLegendClick } = useSelectableSeries<SeriesKey>({
+        purchase_scale_kwh: true,
+        purchase_price: true,
+        avg_on_grid_price: true,
+    });
+
     // General state
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -92,12 +102,12 @@ const GridAgencyPricePage: React.FC = () => {
         console.log("Navigate to Next Month");
     };
 
-    const { 
-        isFullscreen, 
-        FullscreenEnterButton, 
-        FullscreenExitButton, 
-        FullscreenTitle, 
-        NavigationButtons 
+    const {
+        isFullscreen,
+        FullscreenEnterButton,
+        FullscreenExitButton,
+        FullscreenTitle,
+        NavigationButtons
     } = useChartFullscreen({
         chartRef: chartRef,
         title: '历史趋势图',
@@ -110,23 +120,41 @@ const GridAgencyPricePage: React.FC = () => {
     // Define columns here to avoid re-creation on every render
     const columns: GridColDef[] = [
         { field: '_id', headerName: '月份', width: 120 },
-        { 
-            field: 'purchase_price', 
-            headerName: '代理购电价格 (元/kWh)', 
-            width: 200, 
-            valueFormatter: (value: number) => (typeof value === 'number' ? value.toFixed(5) : '')
-        },
-        { 
-            field: 'avg_on_grid_price', 
-            headerName: '平均上网电价 (元/kWh)', 
-            width: 200, 
-            valueFormatter: (value: number) => (typeof value === 'number' ? value.toFixed(5) : '')
-        },
         {
             field: 'purchase_scale_kwh',
             headerName: '代理购电规模 (万kWh)',
             width: 200,
-            valueFormatter: (value: number) => (typeof value === 'number' ? (value / 10000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
+            valueFormatter: (value: number) => (typeof value === 'number' ? value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
+        },
+        {
+            field: 'purchase_price',
+            headerName: '代理购电价格 (元/kWh)',
+            width: 200,
+            valueFormatter: (value: number) => (typeof value === 'number' ? value.toFixed(6) : '')
+        },
+        {
+            field: 'avg_on_grid_price',
+            headerName: '平均上网电价 (元/kWh)',
+            width: 200,
+            valueFormatter: (value: number) => (typeof value === 'number' ? value.toFixed(6) : '')
+        },
+        {
+            field: 'historical_deviation_discount',
+            headerName: '历史偏差折价 (元/kWh)',
+            width: 200,
+            valueFormatter: (value: number) => (typeof value === 'number' ? value.toFixed(6) : '')
+        },
+        {
+            field: 'network_loss_price',
+            headerName: '上网环节线损 (元/kWh)',
+            width: 200,
+            valueFormatter: (value: number) => (typeof value === 'number' ? value.toFixed(6) : '')
+        },
+        {
+            field: 'system_op_cost_discount',
+            headerName: '系统运行费折价 (元/kWh)',
+            width: 200,
+            valueFormatter: (value: number) => (typeof value === 'number' ? value.toFixed(6) : '')
         },
         {
             field: 'actions',
@@ -185,72 +213,80 @@ const GridAgencyPricePage: React.FC = () => {
         const systemOpsBreakdown = currentData.full_data.price_composition.slice(8, 15);
 
         return (
-            <Grid container spacing={3}>
-                {/* Card 1: Main Price Breakdown */}
-                <Grid size={{ xs: 12, md: 5, lg: 4 }}>
-                    <Paper sx={{ p: 3, height: '100%' }} elevation={2}>
-                        <Typography variant="h6" gutterBottom>代理购电价格构成</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 2 }}>
-                            <PriceCheckIcon sx={{ fontSize: 50, color: 'success.main', mr: 2 }} />
-                            <Box>
-                                <Typography variant="h4" component="div" fontWeight="bold">
-                                    {currentData.purchase_price.toFixed(5)}
-                                </Typography>
-                                <Typography variant="subtitle2" color="text.secondary">元/kWh</Typography>
+            <>
+                <Box sx={{ mb: 2 }}>
+                    <Typography variant="h5" component="div" align="right" color="text.secondary" fontWeight="bold">
+                        数据月份: {currentData._id}
+                    </Typography>
+                </Box>
+                <Grid container spacing={3}>
+                    {/* Card 1: Main Price Breakdown */}
+                    <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+                        <Paper sx={{ p: 3, height: '100%' }} elevation={2}>
+                            <Typography variant="h6" component="div">代理购电价格构成</Typography>
+                            <Divider sx={{ my: 1 }} />
+                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 2 }}>
+                                <PriceCheckIcon sx={{ fontSize: 50, color: 'success.main', mr: 2 }} />
+                                <Box>
+                                    <Typography variant="h4" component="div" fontWeight="bold">
+                                        {currentData.purchase_price.toFixed(6)}
+                                    </Typography>
+                                    <Typography variant="subtitle2" color="text.secondary">元/kWh</Typography>
+                                </Box>
                             </Box>
-                        </Box>
-                        <Divider sx={{ my: 1.5 }} />
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant="body1">平均上网电价</Typography>
-                            <Typography variant="body1" fontWeight="bold">{currentData.avg_on_grid_price.toFixed(5)}</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                            <Typography variant="body1">历史偏差折价</Typography>
-                            <Typography variant="body1" fontWeight="bold">{currentData.historical_deviation_discount.toFixed(5)}</Typography>
-                        </Box>
-                    </Paper>
-                </Grid>
+                            <Divider sx={{ my: 1.5 }} />
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="body1">平均上网电价</Typography>
+                                <Typography variant="body1" fontWeight="bold">{currentData.avg_on_grid_price.toFixed(6)}</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                                <Typography variant="body1">历史偏差折价</Typography>
+                                <Typography variant="body1" fontWeight="bold">{currentData.historical_deviation_discount.toFixed(6)}</Typography>
+                            </Box>
+                        </Paper>
+                    </Grid>
 
-                {/* Cards 2 & 3 Combined */}
-                <Grid size={{ xs: 12, md: 3, lg: 3 }}>
-                    <Grid container spacing={3}>
-                        <Grid size={{ xs: 12 }}>
-                             <StatCard 
-                                title="代理购电规模" 
-                                value={`${(currentData.purchase_scale_kwh / 10000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 万kWh`}
-                                icon={<ElectricMeterIcon />}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12 }}>
-                            <StatCard 
-                                title="上网环节线損" 
-                                value={`${currentData.network_loss_price.toFixed(5)} 元/kWh`}
-                                icon={<LanIcon />} 
-                                color="warning.main"
-                            />
+                    {/* Cards 2 & 3 Combined */}
+                    <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+                        <Grid container spacing={2} sx={{ height: '100%', flexDirection: 'column' }}>
+                            <Grid size={{ xs: 12 }} sx={{ flex: 1 }}>
+                                <StatCard
+                                    title="代理购电规模"
+                                    value={`${currentData.purchase_scale_kwh.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 万kWh`}
+                                    icon={<ElectricMeterIcon />}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12 }} sx={{ flex: 1 }}>
+                                <StatCard
+                                    title="上网环节线損"
+                                    value={`${currentData.network_loss_price.toFixed(6)} 元/kWh`}
+                                    icon={<LanIcon />}
+                                    color="warning.main"
+                                />
+                            </Grid>
                         </Grid>
                     </Grid>
-                </Grid>
 
-                {/* Card 4: System Ops Breakdown */}
-                <Grid size={{ xs: 12, md: 4, lg: 5 }}>
-                    <Paper sx={{ p: 2, height: '100%' }} elevation={2}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography variant="h6">系统运行费及构成</Typography>
-                            <Typography variant="h5" fontWeight="bold">{currentData.system_op_cost_discount.toFixed(5)}</Typography>
-                        </Box>
-                        <Divider sx={{ my: 1 }} />
-                        <Box sx={{ overflowY: 'auto', maxHeight: 120 }}>
-                            {systemOpsBreakdown.map((item, index) => (
-                                <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', my: 0.5 }}>
-                                    <Typography variant="body2" color="text.secondary">{item[0]}</Typography>
-                                    <Typography variant="body2" color="text.secondary" fontWeight="medium">{typeof item[1] === 'number' ? item[1].toFixed(5) : item[1]}</Typography>
-                                </Box>
-                            ))}
-                        </Box>
-                    </Paper>
+                    {/* Card 4: System Ops Breakdown */}
+                    <Grid size={{ xs: 12, md: 12, lg: 4 }}>
+                        <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }} elevation={2}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="h6">系统运行费及构成</Typography>
+                                <Typography variant="h5" fontWeight="bold">{currentData.system_op_cost_discount.toFixed(6)}</Typography>
+                            </Box>
+                            <Divider sx={{ my: 1 }} />
+                            <Box sx={{ flexGrow: 1 }}>
+                                {systemOpsBreakdown.map((item, index) => (
+                                    <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', my: 0.5 }}>
+                                        <Typography variant="body2" color="text.secondary">{item[0]}</Typography>
+                                        <Typography variant="body2" color="text.secondary" fontWeight="medium">{typeof item[1] === 'number' ? item[1].toFixed(6) : item[1]}</Typography>
+                                    </Box>
+                                ))}
+                            </Box>
+                        </Paper>
+                    </Grid>
                 </Grid>
-            </Grid>
+            </>
         );
     }
 
@@ -267,18 +303,18 @@ const GridAgencyPricePage: React.FC = () => {
                         <ComposedChart data={allChartData}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="_id" />
-                            <YAxis yAxisId="left" label={{ value: '价格 (元/kWh)', angle: -90, position: 'insideLeft' }} />
-                            <YAxis yAxisId="right" orientation="right" label={{ value: '规模 (万kWh)', angle: -90, position: 'insideRight' }} tickFormatter={(value: number) => `${(value / 10000).toLocaleString()}`} />
+                            <YAxis yAxisId="left" label={{ value: '价格 (元/kWh)', angle: -90, position: 'insideLeft' }} domain={[dataMin => (dataMin * 0.95), dataMax => (dataMax * 1.05)]} tickFormatter={(value: number) => value.toFixed(2)} />
+                            <YAxis yAxisId="right" orientation="right" label={{ value: '规模 (万kWh)', angle: -90, position: 'insideRight' }} tickFormatter={(value: number) => `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                             <Tooltip formatter={(value: number, name: string) => {
                                 if (name === '代理购电规模') {
-                                    return `${(value / 10000).toFixed(2)} 万kWh`;
+                                    return `${value.toFixed(2)} 万kWh`;
                                 }
-                                return `${value.toFixed(5)} 元/kWh`;
+                                return `${value.toFixed(6)} 元/kWh`;
                             }} />
-                            <Legend />
-                            <Bar yAxisId="right" dataKey="purchase_scale_kwh" name="代理购电规模" fill="#8884d8" />
-                            <Line yAxisId="left" type="monotone" dataKey="purchase_price" name="代理购电价格" stroke="#82ca9d" strokeWidth={2} />
-                            <Line yAxisId="left" type="monotone" dataKey="avg_on_grid_price" name="平均上网电价" stroke="#ffc658" />
+                            <Legend onClick={handleLegendClick} />
+                            <Bar yAxisId="right" dataKey="purchase_scale_kwh" name="代理购电规模" fill="#8884d8" hide={!seriesVisibility.purchase_scale_kwh} />
+                            <Line yAxisId="left" type="monotone" dataKey="purchase_price" name="代理购电价格" stroke="#82ca9d" strokeWidth={2} hide={!seriesVisibility.purchase_price} />
+                            <Line yAxisId="left" type="monotone" dataKey="avg_on_grid_price" name="平均上网电价" stroke="#ffc658" hide={!seriesVisibility.avg_on_grid_price} />
                         </ComposedChart>
                     </ResponsiveContainer>
                 </Box>
