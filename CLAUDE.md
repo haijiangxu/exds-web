@@ -1,0 +1,236 @@
+# CLAUDE.md
+
+本文件为 Claude Code (claude.ai/code) 在此仓库中工作时提供指导。
+
+## 项目概述
+
+"电力交易辅助决策系统"是一个用于电力负荷数据可视化与分析的Web应用，旨在为用户提供直观、高效的电力负荷数据分析工具，并为未来扩展负荷预测、交易策略和电费结算等功能奠定基础。
+
+项目采用前后端分离架构：
+- **后端**: FastAPI (Python) + MongoDB
+- **前端**: React (TypeScript) + Material-UI + Recharts
+
+## 常用开发命令
+
+### 后端 (FastAPI)
+
+```bash
+# 安装依赖
+pip install -r webapp/requirements.txt
+
+# 启动开发服务器
+uvicorn webapp.main:app --reload --host 0.0.0.0 --port 8005
+
+# API 交互式文档：http://127.0.0.1:8005/docs
+```
+
+### 前端 (React)
+
+```bash
+# 安装依赖
+npm install --prefix frontend
+
+# 启动开发服务器
+npm start --prefix frontend
+
+# 生产构建
+npm run build --prefix frontend
+
+# 运行测试
+npm test --prefix frontend
+```
+
+前端开发服务器运行在 `http://localhost:3000`，已配置代理，所有 `/api` 请求会转发到后端 `http://127.0.0.1:8005`。
+
+## 前端开发工作流
+
+**重要**：在开始前端开发任务时，应首先在后台启动开发服务器，并将日志输出到指定文件，以便自主诊断编译错误：
+
+```bash
+npm start --prefix frontend > ~\.claude\tmp\frontend_dev.log 2>&1 &
+```
+
+当遇到编译错误时，首要行动是读取 `frontend_dev.log` 文件内容以获取详细错误信息，然后进行修复。
+
+## 代码架构
+
+### 后端架构
+
+- **入口文件**: `webapp/main.py`
+  - 初始化 FastAPI 应用
+  - 配置 JWT 认证（OAuth2 密码模式，30分钟过期）
+  - 配置 CORS 中间件
+  - 配置速率限制（登录 5次/分钟，其他 1000次/分钟）
+
+- **API 路由**: `webapp/api/v1.py`
+  - 包含所有业务接口（公开路由和受保护路由）
+  - 公开路由：`public_router`（如 PDF 下载）
+  - 受保护路由：`router`（需要 JWT 认证，依赖 `get_current_active_user`）
+
+- **数据库访问**: `webapp/tools/mongo.py`
+  - 提供全局 `DATABASE` 实例
+  - 配置从 `~/.exds/config.ini` 或环境变量读取
+  - **所有数据库操作必须通过 `webapp.tools.mongo.DATABASE` 进行**
+
+- **数据库集合**:
+  - `user_load_data` - 用户负荷数据
+  - `day_ahead_spot_price` / `real_time_spot_price` - 日前/实时市场价格
+  - `tou_rules` - 分时电价规则
+  - `price_sgcc` - 国网代购电价数据（含 PDF 附件二进制数据）
+
+### 前端架构
+
+- **API 客户端**: `frontend/src/api/client.ts`
+  - 预配置的 axios 实例，包含 JWT 令牌拦截器
+  - **所有对后端的请求都必须通过此实例发出**
+  - 请求拦截器：自动添加 `Authorization: Bearer {token}` 头
+  - 响应拦截器：401 错误时自动清除 token 并跳转登录页
+
+- **页面组件**:
+  - `LoadAnalysisPage` - 负荷曲线与电量分析
+  - `MarketPriceAnalysisPage` - 市场价格对比与时段分析
+  - `GridAgencyPricePage` - 国网代购电价（含嵌入式 PDF 预览）
+  - `LoginPage` - 用户登录
+
+- **可复用 Hooks** (位于 `frontend/src/hooks/`):
+  - `useChartFullscreen.tsx` - 图表横屏全屏功能
+  - `useSelectableSeries.tsx` - 图表曲线交互式选择
+
+- **路由保护**:
+  - `ProtectedRoute` 组件检查 localStorage 中的 JWT token
+  - 未登录用户自动重定向到登录页
+
+### 核心架构模式
+
+1. **认证流程**:
+   - 登录 → POST `/token` → 获取 JWT token
+   - Token 存储在 localStorage
+   - 所有受保护的 API 请求携带 `Authorization: Bearer {token}` 头
+   - 401 响应触发自动登出和重定向
+
+2. **数据库访问模式**:
+   - 单例模式：全局共享 `DATABASE` 实例
+   - 延迟连接：首次访问时才建立连接
+   - 配置优先级：环境变量 > config.ini > 默认值
+
+3. **API 设计模式**:
+   - RESTful 风格
+   - Pydantic 模型用于数据校验和序列化
+   - 使用 MongoDB 聚合管道优化复杂查询
+   - 公开/受保护路由分离
+
+## 关键开发规范
+
+### 1. Material-UI Grid 组件语法（v7 版本）
+
+**极其重要**：本项目使用 Material-UI v7，其 `Grid` 组件 API 与 v5 **不兼容**。
+
+❌ **错误语法**（会导致编译错误）:
+```jsx
+<Grid item xs={12}>...</Grid>
+<Grid xs={12}>...</Grid>
+```
+
+✅ **正确语法**（必须使用 `size` 属性）:
+```jsx
+<Grid container spacing={2}>
+  <Grid size={{ xs: 12, md: 6 }}>
+    {/* 内容 */}
+  </Grid>
+  <Grid size={{ xs: 12, md: 6 }}>
+    {/* 内容 */}
+  </Grid>
+</Grid>
+```
+
+### 2. 图表横屏全屏功能
+
+**强制要求**：所有 Recharts 图表在移动端**必须**支持"横屏最大化"功能。
+
+**实现方式**：**必须**使用项目内置的可复用 Hook `useChartFullscreen`。
+
+**位置**：`frontend/src/hooks/useChartFullscreen.tsx`
+
+**使用示例**：
+```jsx
+const {
+  isFullscreen,
+  FullscreenEnterButton,
+  FullscreenExitButton,
+  FullscreenTitle,
+  NavigationButtons
+} = useChartFullscreen({
+  chartRef,
+  title: '图表标题',
+  onPrevious: handlePrevious,  // 可选：上一个
+  onNext: handleNext,          // 可选：下一个
+});
+
+return (
+  <Box ref={chartRef} sx={{...}}>
+    {/* 进入全屏按钮 */}
+    <FullscreenEnterButton />
+
+    {/* 退出全屏按钮 */}
+    <FullscreenExitButton />
+
+    {/* 全屏标题 */}
+    <FullscreenTitle />
+
+    {/* 导航按钮（上一个/下一个） */}
+    <NavigationButtons />
+
+    {/* 图表内容 */}
+    <ResponsiveContainer>
+      {/* Recharts 图表组件 */}
+    </ResponsiveContainer>
+  </Box>
+);
+```
+
+### 3. 图表曲线选择功能
+
+**强制要求**：对于需要用户交互式选择显示/隐藏图表曲线的场景，**必须**使用项目内置的可复用 Hook `useSelectableSeries`。
+
+**位置**：`frontend/src/hooks/useSelectableSeries.tsx`
+
+**使用方法**：参考 `docs/技术方案与编码规范.md` 中 `3.8.2. useSelectableSeries` 的详细说明（如果存在）。
+
+### 4. 移动端响应式设计
+
+**强制要求**：
+- 所有页面和组件**必须**采用移动端优先的响应式设计
+- 优先使用 Material-UI 的栅格系统（`Grid`）和断点（`sx` 属性）实现响应式布局
+- 在开发新的图表功能或交互时，**必须**首先检查 `frontend/src/hooks/` 目录下是否存在已有的可复用 Hook
+- 避免重复造轮子，优先使用现有 Hook
+
+## 后端开发规范
+
+- **类型提示**：所有新代码**必须**添加明确的 Python 类型提示
+- **代码风格**：遵循 PEP 8 规范，推荐使用 `Black` 或 `Ruff` 进行格式化
+- **命名约定**：变量和函数使用 `snake_case`，类名使用 `PascalCase`
+- **API 设计**：遵循 RESTful 原则，使用 Pydantic 模型进行数据校验和序列化
+- **错误处理**：使用 FastAPI 的 `HTTPException` 来处理 HTTP 相关的客户端错误
+- **数据库访问**：所有数据库操作应通过 `webapp.tools.mongo.DATABASE` 全局实例进行
+
+## 前端开发规范
+
+- **代码风格**：推荐使用 `Prettier` 进行自动代码格式化
+- **命名约定**：组件（及文件名）使用 `PascalCase`，变量和函数使用 `camelCase`
+- **组件开发**：优先使用函数式组件和 Hooks，并保持组件的单一职责原则
+- **API 通信**：所有对后端的请求都应通过 `src/api/client.ts` 中预配置的 axios 实例发出
+- **可复用 Hook 原则**：
+  - 开发新功能前，**必须**先检查 `frontend/src/hooks/` 目录
+  - 优先使用现有 Hook，避免重复实现
+  - 如果现有 Hook 无法满足需求且功能具有通用性，应封装为新的可复用 Hook
+
+## 未来技术优化建议
+
+以下是为提升项目可维护性和开发效率的建议，可在未来的迭代中考虑引入：
+
+- **前端状态管理**：考虑使用 **Zustand** 来管理全局状态（如用户信息），以简化逻辑、提升性能
+- **前端数据请求**：考虑使用 **TanStack Query** (原 React Query) 来替代手动的 `useEffect` + `axios` 模式，以自动化管理数据缓存、加载和错误状态
+
+## 项目要求
+
+**一律用中文简体回复**：在此项目中，所有交互、代码注释、文档等都应使用中文简体。

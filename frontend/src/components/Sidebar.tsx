@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     List,
     ListItemButton,
@@ -44,6 +44,8 @@ import {
     VpnKeyOutlined,
     BarChartOutlined
 } from '@mui/icons-material';
+import { useTabContext } from '../contexts/TabContext';
+import { getRouteConfig } from '../config/routes';
 
 // 定义菜单项类型
 interface SubMenuItem {
@@ -139,14 +141,65 @@ const menuItems: MenuItem[] = [
     },
 ];
 
-export const Sidebar: React.FC = () => {
+export const Sidebar: React.FC<{ isMobile?: boolean }> = ({ isMobile = false }) => {
     const location = useLocation();
     const navigate = useNavigate();
     const [open, setOpen] = useState<{ [key: string]: boolean }>({});
 
+    // 只在桌面端使用 TabContext
+    const tabContext = !isMobile ? useTabContext() : null;
+
     const handleClick = (text: string) => {
         setOpen(prev => ({ ...prev, [text]: !prev[text] }));
     };
+
+    // 处理菜单项点击
+    const handleMenuItemClick = (path: string) => {
+        if (isMobile) {
+            // 移动端：使用传统的路由跳转
+            navigate(path);
+        } else if (tabContext) {
+            // 桌面端：打开或激活页签
+            const routeConfig = getRouteConfig(path);
+            if (routeConfig) {
+                const Component = routeConfig.component;
+                tabContext.addTab({
+                    key: path,
+                    title: routeConfig.title,
+                    path: path,
+                    component: <Component />,
+                });
+            }
+        }
+    };
+
+    // 根据当前激活的页签或路由，确定选中的菜单项
+    const getActivePath = (): string => {
+        if (isMobile) {
+            return location.pathname;
+        } else if (tabContext && tabContext.activeTabKey) {
+            return tabContext.activeTabKey;
+        }
+        return '';
+    };
+
+    const activePath = getActivePath();
+
+    // 自动展开包含当前激活路径的菜单
+    useEffect(() => {
+        if (activePath) {
+            menuItems.forEach((item) => {
+                if (item.subItems) {
+                    const hasActiveSubItem = item.subItems.some(
+                        (sub) => activePath.startsWith(sub.path)
+                    );
+                    if (hasActiveSubItem) {
+                        setOpen((prev) => ({ ...prev, [item.text]: true }));
+                    }
+                }
+            });
+        }
+    }, [activePath]);
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -160,7 +213,7 @@ export const Sidebar: React.FC = () => {
             <List component="nav" sx={{ flexGrow: 1, p: 1 }}>
                 {menuItems.map((item) => {
                     if (item.subItems) {
-                        const isOpen = open[item.text] || item.subItems.some(sub => location.pathname.startsWith(sub.path));
+                        const isOpen = open[item.text] || item.subItems.some(sub => activePath.startsWith(sub.path));
                         return (
                             <div key={item.text}>
                                 <ListItemButton onClick={() => handleClick(item.text)} sx={{ borderRadius: '8px' }}>
@@ -173,9 +226,8 @@ export const Sidebar: React.FC = () => {
                                         {item.subItems.map((subItem) => (
                                             <ListItemButton
                                                 key={subItem.text}
-                                                component={Link}
-                                                to={subItem.path}
-                                                selected={location.pathname === subItem.path}
+                                                onClick={() => handleMenuItemClick(subItem.path)}
+                                                selected={activePath === subItem.path}
                                                 sx={{ pl: 4, borderRadius: '8px' }}
                                             >
                                                 <ListItemIcon sx={{ minWidth: 40 }}>{subItem.icon}</ListItemIcon>
@@ -190,9 +242,8 @@ export const Sidebar: React.FC = () => {
                     return (
                         <ListItemButton
                             key={item.text}
-                            component={Link}
-                            to={item.path || '#'}
-                            selected={location.pathname === item.path}
+                            onClick={() => handleMenuItemClick(item.path || '#')}
+                            selected={activePath === item.path}
                             sx={{ borderRadius: '8px' }}
                         >
                             <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
