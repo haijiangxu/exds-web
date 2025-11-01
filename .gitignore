@@ -220,3 +220,7 @@ Thumbs.db
 /frontend/build
 npm-debug.log*
 yarn-error.log
+
+# Added by Gemini
+demo.jpg
+errors.txt
