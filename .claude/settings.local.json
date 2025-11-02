@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm search:*)",
+      "Bash(npm install:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

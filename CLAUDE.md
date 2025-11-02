@@ -121,6 +121,21 @@ npm start --prefix frontend > ~\.claude\tmp\frontend_dev.log 2>&1 &
 
 ## 关键开发规范
 
+### 0. 前端页面设计规范（必读）
+
+**开发任何前端页面前必须阅读**：`docs/前端页面设计规范.md`
+
+该规范涵盖：
+- 页面结构标准（容器、标题、面包屑）
+- 组件样式规范（Paper、Typography、Grid v7）
+- 布局模式（Tab 式导航、仪表板式）
+- 响应式设计要求
+- 开发检查清单
+
+**参考示例**：`LoadAnalysisPage`、`MarketPriceAnalysisPage`、`GridAgencyPricePage`
+
+---
+
 ### 1. Material-UI Grid 组件语法（v7 版本）
 
 **极其重要**：本项目使用 Material-UI v7，其 `Grid` 组件 API 与 v5 **不兼容**。
@@ -214,6 +229,30 @@ return (
 - **数据库访问**：所有数据库操作应通过 `webapp.tools.mongo.DATABASE` 全局实例进行
 
 ## 前端开发规范
+
+### 📋 页面设计规范（强制）
+
+**极其重要**：所有前端页面开发**必须**严格遵循《前端页面设计规范》。
+
+**规范文档位置**：`docs/前端页面设计规范.md`
+
+**强制要求**：
+- 在开发任何新页面或修改现有页面前，**必须**先完整阅读该规范文档
+- 所有页面必须遵循规范中定义的：
+  - 页面结构（外层容器、页面标题）
+  - 组件样式（Paper、Typography、Grid v7 语法）
+  - 布局模式（Tab 式导航、仪表板式）
+  - 响应式设计要求
+- 使用规范文档第 5 节的"开发检查清单"进行自检
+
+**参考示例页面**：
+- `LoadAnalysisPage` - Tab 式导航布局标准
+- `MarketPriceAnalysisPage` - Tab 式导航布局标准
+- `GridAgencyPricePage` - 仪表板式布局标准
+
+---
+
+### 通用开发规范
 
 - **代码风格**：推荐使用 `Prettier` 进行自动代码格式化
 - **命名约定**：组件（及文件名）使用 `PascalCase`，变量和函数使用 `camelCase`

@@ -6,15 +6,14 @@ import {
     Typography,
     CircularProgress,
     Alert,
-    Container,
     Divider,
     Button,
     useMediaQuery,
     Theme,
-    IconButton
+    IconButton,
+    Breadcrumbs
 } from '@mui/material';
 import { SvgIconProps } from '@mui/material/SvgIcon';
-import { PageHeader } from '../components/PageHeader';
 import apiClient from '../api/client';
 import PriceCheckIcon from '@mui/icons-material/PriceCheck';
 import ElectricMeterIcon from '@mui/icons-material/ElectricMeter';
@@ -212,31 +211,42 @@ const GridAgencyPricePage: React.FC = () => {
     const renderCards = (currentData: SGCCPriceData) => {
         const systemOpsBreakdown = currentData.full_data.price_composition.slice(8, 15);
 
+        // 格式化日期：将 "YYYY-MM" 转换为 "YYYY年MM月"
+        const formatMonth = (dateStr: string): string => {
+            const [year, month] = dateStr.split('-');
+            return `${year}年${month}月`;
+        };
+
         return (
             <>
-                <Box sx={{ mb: 2 }}>
-                    <Typography variant="h5" component="div" align="right" color="text.secondary" fontWeight="bold">
-                        数据月份: {currentData._id}
-                    </Typography>
-                </Box>
                 <Grid container spacing={3}>
                     {/* Card 1: Main Price Breakdown */}
                     <Grid size={{ xs: 12, md: 6, lg: 4 }}>
                         <Paper sx={{ p: 3, height: '100%' }} elevation={2}>
-                            <Typography variant="h6" component="div">代理购电价格构成</Typography>
-                            <Divider sx={{ my: 1 }} />
-                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 2 }}>
-                                <PriceCheckIcon sx={{ fontSize: 50, color: 'success.main', mr: 2 }} />
-                                <Box>
+                            {/* 第一行：数据月份（左对齐） */}
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 1.5 }}>
+                                <Typography variant="h4" component="div" fontWeight="bold">
+                                    {formatMonth(currentData._id)}
+                                </Typography>
+                            </Box>
+
+                            <Divider sx={{ my: 1.5 }} />
+
+                            {/* 第二行：左边标题，右边图标+价格 */}
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="h6" component="div">代理购电价格</Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <PriceCheckIcon sx={{ fontSize: 50, color: 'success.main', mr: 2 }} />
                                     <Typography variant="h4" component="div" fontWeight="bold">
                                         {currentData.purchase_price.toFixed(6)}
                                     </Typography>
-                                    <Typography variant="subtitle2" color="text.secondary">元/kWh</Typography>
                                 </Box>
                             </Box>
+
+                            {/* 第三行：价格明细 */}
                             <Divider sx={{ my: 1.5 }} />
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Typography variant="body1">平均上网电价</Typography>
+                                <Typography variant="body1">其中: 平均上网电价</Typography>
                                 <Typography variant="body1" fontWeight="bold">{currentData.avg_on_grid_price.toFixed(6)}</Typography>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
@@ -292,7 +302,7 @@ const GridAgencyPricePage: React.FC = () => {
 
     const renderChart = (allChartData: SGCCPriceData[]) => {
         return (
-            <Paper sx={{ p: 2, mt: 3, height: 400 }} elevation={2}>
+            <Paper sx={{ p: 2, mt: 3, height: 400 }}>
                 <Typography variant="h6" gutterBottom>历史趋势图</Typography>
                 <Box ref={chartRef} sx={{ height: '90%', position: 'relative', backgroundColor: isFullscreen ? 'background.paper' : 'transparent', p: isFullscreen ? 2 : 0 }}>
                     <FullscreenEnterButton />
@@ -324,7 +334,7 @@ const GridAgencyPricePage: React.FC = () => {
 
     const renderTable = () => {
         return (
-            <Paper sx={{ p: 2, mt: 3, width: '100%' }} elevation={2}>
+            <Paper sx={{ p: 2, mt: 3, width: '100%' }}>
                  <Typography variant="h6" gutterBottom>历史数据详情</Typography>
                 {isMobile ? (
                     <Box sx={{ mt: 2 }}>
@@ -382,19 +392,19 @@ const GridAgencyPricePage: React.FC = () => {
     };
 
     return (
-        <Container maxWidth="xl">
-            <PageHeader 
-                title="国网代购电价格" 
-                breadcrumbs={[
-                    { label: '首页', href: '/' },
-                    { label: '基础数据' },
-                    { label: '国网代购电价格' }
-                ]}
-            />
-            <Box sx={{ mt: 3 }}>
-                {renderContent()}
-            </Box>
-        </Container>
+        <Box sx={{ width: '100%' }}>
+            {/* 页面标题 */}
+            <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
+                <Typography sx={{ fontSize: '1.2rem', fontWeight: 600 }}>
+                    基础数据
+                </Typography>
+                <Typography sx={{ fontSize: '1.2rem', fontWeight: 600 }}>
+                    国网代购电价格
+                </Typography>
+            </Breadcrumbs>
+
+            {renderContent()}
+        </Box>
     );
 };
 
