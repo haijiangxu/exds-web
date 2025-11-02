@@ -305,6 +305,347 @@ def get_sgcc_prices(page: int = 1, pageSize: int = 10):
 # --- 公开路由，无需认证 ---
 public_router = APIRouter(prefix="/api/v1", tags=["v1-public"])
 
+# ##############################################################################
+# 市场价格分析API (Market Price Analysis APIs)
+# ##############################################################################
+
+@router.get("/market-analysis/dashboard", summary="获取市场价格总览（Market Dashboard）")
+def get_market_dashboard(date: str = Query(..., description="查询日期, 格式 YYYY-MM-DD")):
+    """
+    获取指定日期的市场价格总览数据，包括：
+    - 财务KPI：VWAP、TWAP、价差
+    - 风险KPI：最大/最小价差、极值价格
+    - 96点时序数据：价格、电量曲线
+    - 时段汇总统计：按尖峰平谷分组
+    """
+    try:
+        start_date = datetime.strptime(date, "%Y-%m-%d")
+        end_date = start_date + timedelta(days=1)
+
+        # 获取尖峰平谷规则
+        tou_rules = get_tou_rule_for_date(start_date)
+
+        # 查询日前和实时数据
+        query = {"datetime": {"$gte": start_date, "$lt": end_date}}
+        da_docs = list(DA_PRICE_COLLECTION.find(query).sort("datetime", 1))
+        rt_docs = list(RT_PRICE_COLLECTION.find(query).sort("datetime", 1))
+
+        # 转换为字典以便快速查找
+        da_map = {doc['datetime']: doc for doc in da_docs}
+        rt_map = {doc['datetime']: doc for doc in rt_docs}
+
+        # 初始化数据容器
+        time_series = []
+        da_weighted_sum = 0
+        da_volume_sum = 0
+        rt_weighted_sum = 0
+        rt_volume_sum = 0
+        da_prices = []
+        rt_prices = []
+
+        max_positive_spread = {"value": float('-inf'), "time": "", "period": 0}
+        max_negative_spread = {"value": float('inf'), "time": "", "period": 0}
+        max_rt_price = {"value": float('-inf'), "time": "", "period": 0}
+        min_rt_price = {"value": float('inf'), "time": "", "period": 0}
+
+        # 时段统计收集器
+        period_collector = {}
+
+        # 遍历96个时段
+        for i in range(96):
+            time_obj = start_date + timedelta(minutes=15 * i)
+            time_str = time_obj.strftime("%H:%M")
+            period = i + 1
+
+            da_doc = da_map.get(time_obj)
+            rt_doc = rt_map.get(time_obj)
+
+            da_price = da_doc.get('avg_clearing_price') if da_doc else None
+            da_volume = da_doc.get('total_clearing_power', 0) if da_doc else 0
+
+            rt_price = rt_doc.get('avg_clearing_price') if rt_doc else None
+            rt_volume = rt_doc.get('total_clearing_power', 0) if rt_doc else 0
+            rt_wind = rt_doc.get('wind_clearing_power', 0) if rt_doc else 0
+            rt_solar = rt_doc.get('solar_clearing_power', 0) if rt_doc else 0
+
+            spread = (rt_price - da_price) if (rt_price is not None and da_price is not None) else None
+
+            # 获取时段类型（尖峰平谷）
+            period_type = tou_rules.get(time_str, "平段")
+
+            # 时序数据
+            time_series.append({
+                "period": period,
+                "time": time_str,
+                "price_rt": rt_price,
+                "price_da": da_price,
+                "volume_rt": rt_volume,
+                "volume_da": da_volume,
+                "spread": spread,
+                "period_type": period_type
+            })
+
+            # VWAP计算累积
+            if da_price is not None and da_volume > 0:
+                da_weighted_sum += da_price * da_volume
+                da_volume_sum += da_volume
+                da_prices.append(da_price)
+
+            if rt_price is not None and rt_volume > 0:
+                rt_weighted_sum += rt_price * rt_volume
+                rt_volume_sum += rt_volume
+                rt_prices.append(rt_price)
+
+            # 风险KPI计算
+            if spread is not None:
+                if spread > max_positive_spread["value"]:
+                    max_positive_spread = {"value": spread, "time": time_str, "period": period}
+                if spread < max_negative_spread["value"]:
+                    max_negative_spread = {"value": spread, "time": time_str, "period": period}
+
+            if rt_price is not None:
+                if rt_price > max_rt_price["value"]:
+                    max_rt_price = {"value": rt_price, "time": time_str, "period": period}
+                if rt_price < min_rt_price["value"]:
+                    min_rt_price = {"value": rt_price, "time": time_str, "period": period}
+
+            # 时段统计收集
+            if period_type not in period_collector:
+                period_collector[period_type] = {
+                    "da_weighted_sum": 0,
+                    "da_volume_sum": 0,
+                    "rt_weighted_sum": 0,
+                    "rt_volume_sum": 0,
+                    "rt_wind_sum": 0,
+                    "rt_solar_sum": 0,
+                    "count": 0
+                }
+
+            if da_price is not None and da_volume > 0:
+                period_collector[period_type]["da_weighted_sum"] += da_price * da_volume
+                period_collector[period_type]["da_volume_sum"] += da_volume
+
+            if rt_price is not None and rt_volume > 0:
+                period_collector[period_type]["rt_weighted_sum"] += rt_price * rt_volume
+                period_collector[period_type]["rt_volume_sum"] += rt_volume
+                period_collector[period_type]["rt_wind_sum"] += rt_wind
+                period_collector[period_type]["rt_solar_sum"] += rt_solar
+                period_collector[period_type]["count"] += 1
+
+        # 计算财务KPI
+        vwap_da = da_weighted_sum / da_volume_sum if da_volume_sum > 0 else None
+        vwap_rt = rt_weighted_sum / rt_volume_sum if rt_volume_sum > 0 else None
+        vwap_spread = (vwap_rt - vwap_da) if (vwap_rt is not None and vwap_da is not None) else None
+
+        twap_da = statistics.mean(da_prices) if da_prices else None
+        twap_rt = statistics.mean(rt_prices) if rt_prices else None
+
+        financial_kpis = {
+            "vwap_rt": vwap_rt,
+            "vwap_da": vwap_da,
+            "vwap_spread": vwap_spread,
+            "twap_rt": twap_rt,
+            "twap_da": twap_da
+        }
+
+        # 风险KPI
+        risk_kpis = {
+            "max_positive_spread": max_positive_spread if max_positive_spread["value"] != float('-inf') else None,
+            "max_negative_spread": max_negative_spread if max_negative_spread["value"] != float('inf') else None,
+            "max_rt_price": max_rt_price if max_rt_price["value"] != float('-inf') else None,
+            "min_rt_price": min_rt_price if min_rt_price["value"] != float('inf') else None
+        }
+
+        # 计算时段汇总
+        period_summary = []
+        period_order = ["尖峰", "高峰", "平段", "低谷", "深谷"]
+        for period_name in period_order:
+            if period_name not in period_collector:
+                continue
+
+            data = period_collector[period_name]
+            vwap_da_period = data["da_weighted_sum"] / data["da_volume_sum"] if data["da_volume_sum"] > 0 else None
+            vwap_rt_period = data["rt_weighted_sum"] / data["rt_volume_sum"] if data["rt_volume_sum"] > 0 else None
+            vwap_spread_period = (vwap_rt_period - vwap_da_period) if (vwap_rt_period and vwap_da_period) else None
+            avg_volume_rt = data["rt_volume_sum"] / data["count"] if data["count"] > 0 else None
+
+            renewable_volume = data["rt_wind_sum"] + data["rt_solar_sum"]
+            renewable_ratio = renewable_volume / data["rt_volume_sum"] if data["rt_volume_sum"] > 0 else None
+
+            period_summary.append({
+                "period_name": period_name,
+                "vwap_da": vwap_da_period,
+                "vwap_rt": vwap_rt_period,
+                "vwap_spread": vwap_spread_period,
+                "avg_volume_rt": avg_volume_rt,
+                "renewable_ratio": renewable_ratio
+            })
+
+        return {
+            "date": date,
+            "financial_kpis": financial_kpis,
+            "risk_kpis": risk_kpis,
+            "time_series": time_series,
+            "period_summary": period_summary
+        }
+
+    except ValueError:
+        raise HTTPException(status_code=400, detail="日期格式无效，请使用 YYYY-MM-DD 格式")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取市场总览数据时出错: {str(e)}")
+
+
+@router.get("/market-analysis/day-ahead", summary="获取日前市场分析数据")
+def get_day_ahead_analysis(date: str = Query(..., description="查询日期, 格式 YYYY-MM-DD")):
+    """
+    获取指定日期的日前市场分析数据，包括价格、总电量及各类电源的出力。
+    - **查询**: 从 `day_ahead_spot_price` 集合获取数据。
+    - **排序**: 按 `datetime` 升序排列。
+    - **返回**: 返回原始的96个数据点列表。
+    """
+    try:
+        # 验证日期格式
+        datetime.strptime(date, "%Y-%m-%d")
+
+        # 直接使用 date_str 进行查询
+        query = {"date_str": date}
+        
+        # 查询并排除 _id 字段，按 datetime 排序
+        docs = list(DA_PRICE_COLLECTION.find(query, {'_id': 0}).sort("datetime", 1))
+        
+        if not docs:
+            return []
+            
+        return json.loads(json_util.dumps(docs))
+
+    except ValueError:
+        raise HTTPException(status_code=400, detail="日期格式无效，请使用 YYYY-MM-DD 格式")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取日前市场分析数据时出错: {str(e)}")
+
+
+@router.get("/market-analysis/real-time", summary="获取现货市场复盘数据")
+def get_real_time_analysis(date: str = Query(..., description="查询日期, 格式 YYYY-MM-DD")):
+    """
+    获取指定日期的现货市场复盘数据，包括价格、电量、电源出力以及价格波动。
+    - **查询**: 从 `real_time_spot_price` 集合获取数据。
+    - **计算**: 在返回前计算价格爬坡（price_ramp）。
+    - **返回**: 返回包含计算字段的96个数据点列表。
+    """
+    try:
+        # 验证日期格式
+        datetime.strptime(date, "%Y-%m-%d")
+
+        query = {"date_str": date}
+        docs = list(RT_PRICE_COLLECTION.find(query, {'_id': 0}).sort("datetime", 1))
+
+        if not docs:
+            return []
+
+        # 计算价格爬坡
+        for i in range(len(docs)):
+            if i > 0 and docs[i].get('avg_clearing_price') is not None and docs[i-1].get('avg_clearing_price') is not None:
+                price_ramp = docs[i]['avg_clearing_price'] - docs[i-1]['avg_clearing_price']
+                docs[i]['price_ramp'] = price_ramp
+            else:
+                docs[i]['price_ramp'] = None # 第一个点或数据缺失时，波动为None
+
+        return json.loads(json_util.dumps(docs))
+
+    except ValueError:
+        raise HTTPException(status_code=400, detail="日期格式无效，请使用 YYYY-MM-DD 格式")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取现货市场复盘数据时出错: {str(e)}")
+
+
+@router.get("/market-analysis/spread-attribution", summary="获取价差归因分析数据")
+def get_spread_attribution_analysis(date: str = Query(..., description="查询日期, 格式 YYYY-MM-DD")):
+    try:
+        start_date = datetime.strptime(date, "%Y-%m-%d")
+        query = {"date_str": date}
+
+        # 1. 并行获取数据
+        da_docs = list(DA_PRICE_COLLECTION.find(query, {'_id': 0}).sort("datetime", 1))
+        rt_docs = list(RT_PRICE_COLLECTION.find(query, {'_id': 0}).sort("datetime", 1))
+
+        if not da_docs or not rt_docs or len(da_docs) != len(rt_docs):
+            return {"time_series": [], "systematic_bias": []} # 或者抛出异常
+
+        # 转换为字典以便快速查找
+        da_map = {doc['time_str']: doc for doc in da_docs}
+        rt_map = {doc['time_str']: doc for doc in rt_docs}
+
+        # 2. 获取分时电价规则
+        tou_rules = get_tou_rule_for_date(start_date)
+
+        time_series = []
+        period_collector = {}
+
+        # 3. 计算96点偏差 & 初始化聚合器
+        for i in range(96):
+            time_obj = start_date + timedelta(minutes=15 * i)
+            time_str = time_obj.strftime("%H:%M")
+
+            da_point = da_map.get(time_str, {})
+            rt_point = rt_map.get(time_str, {})
+
+            # 计算价格偏差
+            price_spread = (rt_point.get('avg_clearing_price') - da_point.get('avg_clearing_price')) \
+                if rt_point.get('avg_clearing_price') is not None and da_point.get('avg_clearing_price') is not None else None
+
+            # 计算电量偏差
+            def calc_dev(key):
+                return (rt_point.get(key, 0) or 0) - (da_point.get(key, 0) or 0)
+
+            total_volume_deviation = calc_dev('total_clearing_power')
+            thermal_deviation = calc_dev('thermal_clearing_power')
+            hydro_deviation = calc_dev('hydro_clearing_power')
+            wind_deviation = calc_dev('wind_clearing_power')
+            solar_deviation = calc_dev('solar_clearing_power')
+            storage_deviation = calc_dev('pumped_storage_clearing_power') + calc_dev('battery_storage_clearing_power')
+
+            point_data = {
+                "time_str": time_str,
+                "price_spread": price_spread,
+                "total_volume_deviation": total_volume_deviation,
+                "thermal_deviation": thermal_deviation,
+                "hydro_deviation": hydro_deviation,
+                "wind_deviation": wind_deviation,
+                "solar_deviation": solar_deviation,
+                "storage_deviation": storage_deviation
+            }
+            time_series.append(point_data)
+
+            # 4. 聚合数据到分时段
+            period_type = tou_rules.get(time_str, "平段")
+            if period_type not in period_collector:
+                period_collector[period_type] = {key: [] for key in point_data if key != 'time_str'}
+            
+            for key, value in point_data.items():
+                if key != 'time_str' and value is not None:
+                    period_collector[period_type][key].append(value)
+
+        # 5. 计算系统性偏差
+        systematic_bias = []
+        period_order = ["尖峰", "高峰", "平段", "低谷", "深谷"]
+        for period_name in period_order:
+            if period_name in period_collector:
+                agg_data = {"period_name": period_name}
+                for key, values in period_collector[period_name].items():
+                    if values:
+                        agg_data[f"avg_{key}"] = statistics.mean(values)
+                    else:
+                        agg_data[f"avg_{key}"] = None
+                systematic_bias.append(agg_data)
+
+        return {"time_series": time_series, "systematic_bias": systematic_bias}
+
+    except ValueError:
+        raise HTTPException(status_code=400, detail="日期格式无效，请使用 YYYY-MM-DD 格式")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取价差归因分析数据时出错: {str(e)}")
+
+
 @public_router.get("/prices/sgcc/{month}/pdf", summary="获取指定月份的国网代购电价PDF公告")
 def get_sgcc_price_pdf(month: str):
     """
@@ -318,7 +659,7 @@ def get_sgcc_price_pdf(month: str):
             pdf_bytes = document['pdf_binary_data']
             print(f"[DEBUG] Found PDF for month {month}. Size: {len(pdf_bytes)} bytes.")
             attachment_name = document.get('attachment_name', f"sgcc_price_{month}.pdf")
-            
+
             headers = {
                 'Content-Disposition': f'inline; filename="{attachment_name}"'
             }

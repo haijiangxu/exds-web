@@ -1,6 +1,10 @@
 
 import React, { useState } from 'react';
-import { Box, Tabs, Tab, Typography, Breadcrumbs,Paper } from '@mui/material';
+import { Box, Tabs, Tab, Typography, Breadcrumbs, Paper } from '@mui/material';
+import { MarketDashboardTab } from '../components/MarketDashboardTab';
+import { DayAheadAnalysisTab } from '../components/DayAheadAnalysisTab'; // 导入新组件
+import { RealTimeAnalysisTab } from '../components/RealTimeAnalysisTab'; // 导入新组件
+import { SpreadAnalysisTab } from '../components/SpreadAnalysisTab'; // 导入新组件
 import { PriceCurveComparisonTab } from '../components/PriceCurveComparisonTab';
 import { TimeslotAnalysisTab } from '../components/TimeslotAnalysisTab';
 
@@ -20,11 +24,10 @@ function TabPanel(props: TabPanelProps) {
             aria-labelledby={`analysis-tab-${index}`}
             {...other}
         >
-            {value === index && (
-                <Box sx={{ pt: 3 }}>
-                    {children}
-                </Box>
-            )}
+            {/* 移除条件渲染，让Tab内容常驻，仅通过CSS显隐 */}
+            <Box sx={{ pt: 3 }}>
+                {children}
+            </Box>
         </div>
     );
 }
@@ -51,13 +54,29 @@ export const MarketPriceAnalysisPage: React.FC = () => {
             <Paper variant="outlined" sx={{ borderColor: 'divider' }}>
                 <Tabs value={tabIndex} onChange={handleTabChange} aria-label="market price analysis tabs">
                     <Tab label="现货价格曲线" id="analysis-tab-0" aria-controls="analysis-tabpanel-0" />
-                    <Tab label="时段价格曲线" id="analysis-tab-1" aria-controls="analysis-tabpanel-1" />
+                    <Tab label="日前市场分析" id="analysis-tab-1" aria-controls="analysis-tabpanel-1" />
+                    <Tab label="现货市场复盘" id="analysis-tab-2" aria-controls="analysis-tabpanel-2" />
+                    <Tab label="价差归因分析" id="analysis-tab-3" aria-controls="analysis-tabpanel-3" />
+                    <Tab label="市场价格总览" id="analysis-tab-4" aria-controls="analysis-tabpanel-4" />
+                    <Tab label="时段价格曲线" id="analysis-tab-5" aria-controls="analysis-tabpanel-5" />
                 </Tabs>
             </Paper>
             <TabPanel value={tabIndex} index={0}>
                 <PriceCurveComparisonTab />
             </TabPanel>
             <TabPanel value={tabIndex} index={1}>
+                <DayAheadAnalysisTab />
+            </TabPanel>
+            <TabPanel value={tabIndex} index={2}>
+                <RealTimeAnalysisTab />
+            </TabPanel>
+            <TabPanel value={tabIndex} index={3}>
+                <SpreadAnalysisTab />
+            </TabPanel>
+            <TabPanel value={tabIndex} index={4}>
+                <MarketDashboardTab />
+            </TabPanel>
+            <TabPanel value={tabIndex} index={5}>
                 <TimeslotAnalysisTab />
             </TabPanel>
         </Box>

@@ -7,9 +7,10 @@ interface CustomTooltipProps {
     payload?: any[];
     label?: string;
     unit?: string; // 允许传入单位
+    unitMap?: Record<string, string>; // 新增：允许传入一个单位映射表
 }
 
-export const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, unit = '' }) => {
+export const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, unit = '', unitMap = {} }) => {
     if (active && payload && payload.length) {
         // 从数据点中获取时段类型
         const periodType = payload[0].payload.period_type;
@@ -28,6 +29,9 @@ export const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, l
                     }
 
                     const displayValue = valueIsValid ? pld.value.toFixed(2) : 'N/A';
+                    
+                    // 决定单位：优先使用unitMap，然后回退到unit
+                    const displayUnit = valueIsValid ? (unitMap[pld.dataKey] || unit) : '';
 
                     return (
                         <Box key={index} sx={{ display: 'flex', alignItems: 'center' }}>
@@ -35,7 +39,7 @@ export const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, l
                             <Typography variant="body2" sx={{ color: pld.color || pld.stroke }}>
                                 {`${pld.name}: `}
                                 <Box component="span" sx={{ fontWeight: 'bold' }}>
-                                    {displayValue} {valueIsValid ? unit : ''}
+                                    {displayValue} {displayUnit}
                                 </Box>
                             </Typography>
                         </Box>

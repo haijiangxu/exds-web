@@ -39,7 +39,7 @@ const findExtremePoint = (data: any[], key: string, value: number) => {
 };
 
 export const PriceCurveComparisonTab: React.FC = () => {
-    const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+    const [selectedDate, setSelectedDate] = useState<Date | null>(addDays(new Date(), -1));
     const [loading, setLoading] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<any>(null);
     const [extremePoints, setExtremePoints] = useState<any[]>([]);
@@ -92,7 +92,7 @@ export const PriceCurveComparisonTab: React.FC = () => {
     };
 
     useEffect(() => {
-        fetchChartData(new Date());
+        fetchChartData(selectedDate);
     }, []);
 
     const handleQuery = () => fetchChartData(selectedDate);
