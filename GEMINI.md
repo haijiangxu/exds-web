@@ -93,6 +93,7 @@ npm start --prefix frontend > ~\.gemini\tmp\frontend_dev.log 2>&1 &
 - **可复用 Hooks** (位于 `frontend/src/hooks/`):
   - `useChartFullscreen.tsx` - 图表横屏全屏功能
   - `useSelectableSeries.tsx` - 图表曲线交互式选择
+  - `useTouPeriodBackground.tsx` - 图表时段背景色渲染
 
 - **路由保护**:
   - `ProtectedRoute` 组件检查 localStorage 中的 JWT token

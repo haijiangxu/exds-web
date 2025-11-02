@@ -6,23 +6,15 @@ import {
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { zhCN } from 'date-fns/locale';
-import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Brush, Area, ReferenceDot, ReferenceArea } from 'recharts';
+import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Brush, Area, ReferenceDot } from 'recharts';
 import apiClient from '../api/client';
 import { format, addDays } from 'date-fns';
 import { CustomTooltip } from './CustomTooltip';
 import ArrowLeftIcon from '@mui/icons-material/ArrowLeft';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import { useChartFullscreen } from '../hooks/useChartFullscreen';
+import { useTouPeriodBackground } from '../hooks/useTouPeriodBackground';
 
-
-// 最终颜色方案
-const TOU_PERIOD_COLORS: { [key: string]: string } = {
-    '尖峰': 'rgba(255, 0, 0, 0.2)',      // 红色
-    '高峰': 'rgba(255, 165, 0, 0.2)',    // 橙色
-    '平段': 'rgba(128, 128, 128, 0.1)',  // 灰色
-    '低谷': 'rgba(0, 191, 255, 0.2)',    // 天蓝色
-    '深谷': 'rgba(0, 0, 255, 0.2)',      // 蓝色
-};
 
 const processChartData = (data: any[]) => {
     return data.map(item => {
@@ -46,31 +38,15 @@ const findExtremePoint = (data: any[], key: string, value: number) => {
     return point ? { x: point.time, y: value, label: value.toFixed(2) } : null;
 };
 
-const getTouAreas = (data: any[]) => {
-    if (!data || data.length === 0) return [];
-    const areas = [];
-    if (data.length > 0) {
-        let currentArea = { type: data[0].period_type, x1: data[0].time, x2: '' };
-        for (let i = 1; i < data.length; i++) {
-            if (data[i].period_type !== currentArea.type) {
-                currentArea.x2 = data[i].time;
-                areas.push(currentArea);
-                currentArea = { type: data[i].period_type, x1: data[i].time, x2: '' };
-            }
-        }
-        currentArea.x2 = '24:00';
-        areas.push(currentArea);
-    }
-    return areas;
-};
-
 export const PriceCurveComparisonTab: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const [loading, setLoading] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<any>(null);
     const [extremePoints, setExtremePoints] = useState<any[]>([]);
-    const [touAreas, setTouAreas] = useState<any[]>([]);
     const chartContainerRef = useRef<HTMLDivElement>(null);
+
+    // 使用时段背景色 Hook
+    const { TouPeriodAreas } = useTouPeriodBackground(analysisResult?.chart_data);
 
     const { 
         isFullscreen, 
@@ -90,7 +66,6 @@ export const PriceCurveComparisonTab: React.FC = () => {
         setLoading(true);
         // setAnalysisResult(null); // This caused the unmounting bug, avoid it.
         setExtremePoints([]);
-        setTouAreas([]);
         const dateStr = format(date, 'yyyy-MM-dd');
         apiClient.get(`/api/v1/price_comparison?date=${dateStr}`)
             .then(response => {
@@ -98,7 +73,6 @@ export const PriceCurveComparisonTab: React.FC = () => {
                 if (res && res.chart_data && res.stats) {
                     res.chart_data = processChartData(res.chart_data);
                     setAnalysisResult(res);
-                    setTouAreas(getTouAreas(res.chart_data));
                     const points = [
                         findExtremePoint(res.chart_data, 'day_ahead_price', res.stats.day_ahead_max),
                         findExtremePoint(res.chart_data, 'day_ahead_price', res.stats.day_ahead_min),
@@ -184,9 +158,7 @@ export const PriceCurveComparisonTab: React.FC = () => {
                                         <YAxis domain={['dataMin - 10', 'dataMax + 10']} label={{ value: '价格 (元/MWh)', angle: -90, position: 'insideLeft' }} tick={{ fontSize: 12 }} />
                                         <Tooltip content={<CustomTooltip unit="元/MWh" />} />
                                         <Legend />
-                                        {touAreas.map((area, index) => (
-                                            <ReferenceArea key={index} x1={area.x1} x2={area.x2} strokeOpacity={0} fill={TOU_PERIOD_COLORS[area.type] || 'transparent'} />
-                                        ))}
+                                        {TouPeriodAreas}
                                         <Area type="monotone" dataKey="positiveDiff" fill="#ffc658" strokeWidth={0} name="日前 > 实时" />
                                         <Area type="monotone" dataKey="negativeDiff" fill="#82ca9d" strokeWidth={0} name="实时 > 日前" />
                                         <Line type="monotone" dataKey="day_ahead_price" stroke="#8884d8" dot={false} name="日前价格" />
