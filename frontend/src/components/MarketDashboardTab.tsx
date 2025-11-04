@@ -292,7 +292,7 @@ const PriceChart: React.FC<{ data: TimeSeriesPoint[]; onPrevious: () => void; on
                             <XAxis
                                 dataKey="time_str"
                                 tick={{ fontSize: 12 }}
-                                interval={23}
+                                interval={11}
                             />
                             <YAxis
                                 domain={[Math.floor(minPrice * 0.9), Math.ceil(maxPrice * 1.1)]}
@@ -361,7 +361,7 @@ const VolumeChart: React.FC<{ data: TimeSeriesPoint[]; onPrevious: () => void; o
                             <XAxis
                                 dataKey="time_str"
                                 tick={{ fontSize: 12 }}
-                                interval={23}
+                                interval={11}
                             />
                             <YAxis
                                 domain={[Math.floor(minVolume * 0.9), Math.ceil(maxVolume * 1.1)]}
@@ -475,8 +475,8 @@ export const MarketDashboardTab: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [data, setData] = useState<DashboardData | null>(null);
-    // 直接使用 addDays 初始化为昨天
-    const [selectedDate, setSelectedDate] = useState<Date | null>(addDays(new Date(), -1));
+    // 默认日期为当日的前二日
+    const [selectedDate, setSelectedDate] = useState<Date | null>(addDays(new Date(), -2));
 
     // 加载数据
     useEffect(() => {
@@ -490,6 +490,20 @@ export const MarketDashboardTab: React.FC = () => {
                 const response = await apiClient.get('/api/v1/market-analysis/dashboard', {
                     params: { date_str: dateStr }
                 });
+
+                // 数据验证
+                const timeSeriesData = response.data.time_series;
+                if (timeSeriesData && timeSeriesData.length > 0) {
+                    const firstPoint = timeSeriesData[0];
+                    if (firstPoint.time_str !== '00:15') {
+                        console.warn(`数据起点不正确: ${firstPoint.time_str}，应为 00:15`);
+                    }
+                    // 验证数据点数量（一天96个15分钟间隔）
+                    if (timeSeriesData.length !== 96) {
+                        console.warn(`数据点数量不正确: ${timeSeriesData.length}，应为 96`);
+                    }
+                }
+
                 setData(response.data);
             } catch (err: any) {
                 if (typeof err.response?.data?.detail === 'string') {
@@ -567,7 +581,7 @@ export const MarketDashboardTab: React.FC = () => {
                     </IconButton>
                 </Paper>
 
-            <Grid container spacing={{ xs: 1, sm: 2 }}>
+            <Grid container spacing={{ xs: 1, sm: 2 }} sx={{ mt: 2 }}>
                 {/* 财务指标大卡片 - 桌面端左侧，移动端全宽 */}
                 <Grid size={{ xs: 12, md: 6 }}>
                     <FinancialKPIsPanel kpis={data.financial_kpis} />

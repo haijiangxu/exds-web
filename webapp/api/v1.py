@@ -324,9 +324,8 @@ def get_market_dashboard(date_str: str = Query(..., description="查询日期, �
         # 获取尖峰平谷规则
         tou_rules = get_tou_rule_for_date(start_date)
 
-        # 使用 datetime 范围进行查询，以提高稳健性
-        end_date = start_date + timedelta(days=1)
-        query = {"datetime": {"$gte": start_date, "$lt": end_date}}
+        # 使用 date_str 查询，精确获取业务日的所有96个数据点（00:15 到 24:00）
+        query = {"date_str": date_str}
         da_docs = list(DA_PRICE_COLLECTION.find(query).sort("datetime", 1))
         rt_docs = list(RT_PRICE_COLLECTION.find(query).sort("datetime", 1))
 
