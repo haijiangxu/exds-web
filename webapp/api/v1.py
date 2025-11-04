@@ -310,7 +310,7 @@ public_router = APIRouter(prefix="/api/v1", tags=["v1-public"])
 # ##############################################################################
 
 @router.get("/market-analysis/dashboard", summary="获取市场价格总览（Market Dashboard）")
-def get_market_dashboard(date: str = Query(..., description="查询日期, 格式 YYYY-MM-DD")):
+def get_market_dashboard(date_str: str = Query(..., description="查询日期, 格式 YYYY-MM-DD")):
     """
     获取指定日期的市场价格总览数据，包括：
     - 财务KPI：VWAP、TWAP、价差
@@ -319,64 +319,58 @@ def get_market_dashboard(date: str = Query(..., description="查询日期, 格�
     - 时段汇总统计：按尖峰平谷分组
     """
     try:
-        start_date = datetime.strptime(date, "%Y-%m-%d")
-        end_date = start_date + timedelta(days=1)
-
+        start_date = datetime.strptime(date_str, "%Y-%m-%d")
+        
         # 获取尖峰平谷规则
         tou_rules = get_tou_rule_for_date(start_date)
 
-        # 查询日前和实时数据
+        # 使用 datetime 范围进行查询，以提高稳健性
+        end_date = start_date + timedelta(days=1)
         query = {"datetime": {"$gte": start_date, "$lt": end_date}}
         da_docs = list(DA_PRICE_COLLECTION.find(query).sort("datetime", 1))
         rt_docs = list(RT_PRICE_COLLECTION.find(query).sort("datetime", 1))
 
-        # 转换为字典以便快速查找
-        da_map = {doc['datetime']: doc for doc in da_docs}
-        rt_map = {doc['datetime']: doc for doc in rt_docs}
+        # 为了稳健合并，使用 time_str 作为key创建查找字典
+        da_map = {doc['time_str']: doc for doc in da_docs}
+        rt_map = {doc['time_str']: doc for doc in rt_docs}
 
-        # 初始化数据容器
+        # 初始化数据容器和KPI计算所需的变量
         time_series = []
-        da_weighted_sum = 0
-        da_volume_sum = 0
-        rt_weighted_sum = 0
-        rt_volume_sum = 0
-        da_prices = []
-        rt_prices = []
+        da_weighted_sum, da_volume_sum, rt_weighted_sum, rt_volume_sum = 0, 0, 0, 0
+        da_prices, rt_prices = [], []
 
-        max_positive_spread = {"value": float('-inf'), "time": "", "period": 0}
-        max_negative_spread = {"value": float('inf'), "time": "", "period": 0}
-        max_rt_price = {"value": float('-inf'), "time": "", "period": 0}
-        min_rt_price = {"value": float('inf'), "time": "", "period": 0}
-
-        # 时段统计收集器
+        max_positive_spread = {"value": float('-inf'), "time_str": "", "period": 0}
+        max_negative_spread = {"value": float('inf'), "time_str": "", "period": 0}
+        max_rt_price = {"value": float('-inf'), "time_str": "", "period": 0}
+        min_rt_price = {"value": float('inf'), "time_str": "", "period": 0}
+        
         period_collector = {}
 
-        # 遍历96个时段
-        for i in range(96):
-            time_obj = start_date + timedelta(minutes=15 * i)
-            time_str = time_obj.strftime("%H:%M")
+        # 以日前数据为基础进行遍历，保证时间的完整性
+        for i, da_doc in enumerate(da_docs):
             period = i + 1
+            time_str = da_doc.get("time_str")
+            if not time_str:
+                continue
 
-            da_doc = da_map.get(time_obj)
-            rt_doc = rt_map.get(time_obj)
+            rt_doc = rt_map.get(time_str, {}) # 从实时数据字典中查找对应时段的数据
 
-            da_price = da_doc.get('avg_clearing_price') if da_doc else None
-            da_volume = da_doc.get('total_clearing_power', 0) if da_doc else 0
-
-            rt_price = rt_doc.get('avg_clearing_price') if rt_doc else None
-            rt_volume = rt_doc.get('total_clearing_power', 0) if rt_doc else 0
-            rt_wind = rt_doc.get('wind_clearing_power', 0) if rt_doc else 0
-            rt_solar = rt_doc.get('solar_clearing_power', 0) if rt_doc else 0
+            # 提取价格和电量
+            da_price = da_doc.get('avg_clearing_price')
+            da_volume = da_doc.get('total_clearing_power', 0)
+            rt_price = rt_doc.get('avg_clearing_price')
+            rt_volume = rt_doc.get('total_clearing_power', 0)
+            rt_wind = rt_doc.get('wind_clearing_power', 0)
+            rt_solar = rt_doc.get('solar_clearing_power', 0)
 
             spread = (rt_price - da_price) if (rt_price is not None and da_price is not None) else None
-
-            # 获取时段类型（尖峰平谷）
             period_type = tou_rules.get(time_str, "平段")
 
-            # 时序数据
+            # 组装时序数据，确保 time_str 字段存在
             time_series.append({
                 "period": period,
-                "time": time_str,
+                "time": time_str, # 兼容旧版，或者用于调试
+                "time_str": time_str, # 前端需要此字段
                 "price_rt": rt_price,
                 "price_da": da_price,
                 "volume_rt": rt_volume,
@@ -385,7 +379,7 @@ def get_market_dashboard(date: str = Query(..., description="查询日期, 格�
                 "period_type": period_type
             })
 
-            # VWAP计算累积
+            # 累加用于计算KPIs
             if da_price is not None and da_volume > 0:
                 da_weighted_sum += da_price * da_volume
                 da_volume_sum += da_volume
@@ -396,35 +390,29 @@ def get_market_dashboard(date: str = Query(..., description="查询日期, 格�
                 rt_volume_sum += rt_volume
                 rt_prices.append(rt_price)
 
-            # 风险KPI计算
+            # 更新风险指标
             if spread is not None:
                 if spread > max_positive_spread["value"]:
-                    max_positive_spread = {"value": spread, "time": time_str, "period": period}
+                    max_positive_spread.update({"value": spread, "time_str": time_str, "period": period})
                 if spread < max_negative_spread["value"]:
-                    max_negative_spread = {"value": spread, "time": time_str, "period": period}
-
+                    max_negative_spread.update({"value": spread, "time_str": time_str, "period": period})
             if rt_price is not None:
                 if rt_price > max_rt_price["value"]:
-                    max_rt_price = {"value": rt_price, "time": time_str, "period": period}
+                    max_rt_price.update({"value": rt_price, "time_str": time_str, "period": period})
                 if rt_price < min_rt_price["value"]:
-                    min_rt_price = {"value": rt_price, "time": time_str, "period": period}
-
-            # 时段统计收集
+                    min_rt_price.update({"value": rt_price, "time_str": time_str, "period": period})
+            
+            # 收集分时段数据
             if period_type not in period_collector:
                 period_collector[period_type] = {
-                    "da_weighted_sum": 0,
-                    "da_volume_sum": 0,
-                    "rt_weighted_sum": 0,
-                    "rt_volume_sum": 0,
-                    "rt_wind_sum": 0,
-                    "rt_solar_sum": 0,
-                    "count": 0
+                    "da_weighted_sum": 0, "da_volume_sum": 0,
+                    "rt_weighted_sum": 0, "rt_volume_sum": 0,
+                    "rt_wind_sum": 0, "rt_solar_sum": 0, "count": 0
                 }
-
+            
             if da_price is not None and da_volume > 0:
                 period_collector[period_type]["da_weighted_sum"] += da_price * da_volume
                 period_collector[period_type]["da_volume_sum"] += da_volume
-
             if rt_price is not None and rt_volume > 0:
                 period_collector[period_type]["rt_weighted_sum"] += rt_price * rt_volume
                 period_collector[period_type]["rt_volume_sum"] += rt_volume
@@ -432,21 +420,16 @@ def get_market_dashboard(date: str = Query(..., description="查询日期, 格�
                 period_collector[period_type]["rt_solar_sum"] += rt_solar
                 period_collector[period_type]["count"] += 1
 
+        # --- 后续计算逻辑保持不变 ---
+        
         # 计算财务KPI
         vwap_da = da_weighted_sum / da_volume_sum if da_volume_sum > 0 else None
         vwap_rt = rt_weighted_sum / rt_volume_sum if rt_volume_sum > 0 else None
         vwap_spread = (vwap_rt - vwap_da) if (vwap_rt is not None and vwap_da is not None) else None
-
         twap_da = statistics.mean(da_prices) if da_prices else None
         twap_rt = statistics.mean(rt_prices) if rt_prices else None
 
-        financial_kpis = {
-            "vwap_rt": vwap_rt,
-            "vwap_da": vwap_da,
-            "vwap_spread": vwap_spread,
-            "twap_rt": twap_rt,
-            "twap_da": twap_da
-        }
+        financial_kpis = {"vwap_rt": vwap_rt, "vwap_da": vwap_da, "vwap_spread": vwap_spread, "twap_rt": twap_rt, "twap_da": twap_da}
 
         # 风险KPI
         risk_kpis = {
@@ -460,29 +443,24 @@ def get_market_dashboard(date: str = Query(..., description="查询日期, 格�
         period_summary = []
         period_order = ["尖峰", "高峰", "平段", "低谷", "深谷"]
         for period_name in period_order:
-            if period_name not in period_collector:
-                continue
+            if period_name not in period_collector: continue
 
             data = period_collector[period_name]
             vwap_da_period = data["da_weighted_sum"] / data["da_volume_sum"] if data["da_volume_sum"] > 0 else None
             vwap_rt_period = data["rt_weighted_sum"] / data["rt_volume_sum"] if data["rt_volume_sum"] > 0 else None
             vwap_spread_period = (vwap_rt_period - vwap_da_period) if (vwap_rt_period and vwap_da_period) else None
             avg_volume_rt = data["rt_volume_sum"] / data["count"] if data["count"] > 0 else None
-
+            
             renewable_volume = data["rt_wind_sum"] + data["rt_solar_sum"]
             renewable_ratio = renewable_volume / data["rt_volume_sum"] if data["rt_volume_sum"] > 0 else None
 
             period_summary.append({
-                "period_name": period_name,
-                "vwap_da": vwap_da_period,
-                "vwap_rt": vwap_rt_period,
-                "vwap_spread": vwap_spread_period,
-                "avg_volume_rt": avg_volume_rt,
-                "renewable_ratio": renewable_ratio
+                "period_name": period_name, "vwap_da": vwap_da_period, "vwap_rt": vwap_rt_period,
+                "vwap_spread": vwap_spread_period, "avg_volume_rt": avg_volume_rt, "renewable_ratio": renewable_ratio
             })
 
         return {
-            "date": date,
+            "date": date_str,
             "financial_kpis": financial_kpis,
             "risk_kpis": risk_kpis,
             "time_series": time_series,
@@ -568,11 +546,10 @@ def get_spread_attribution_analysis(date: str = Query(..., description="查询�
         da_docs = list(DA_PRICE_COLLECTION.find(query, {'_id': 0}).sort("datetime", 1))
         rt_docs = list(RT_PRICE_COLLECTION.find(query, {'_id': 0}).sort("datetime", 1))
 
-        if not da_docs or not rt_docs or len(da_docs) != len(rt_docs):
-            return {"time_series": [], "systematic_bias": []} # 或者抛出异常
+        if not da_docs or not rt_docs:
+            return {"time_series": [], "systematic_bias": []}
 
         # 转换为字典以便快速查找
-        da_map = {doc['time_str']: doc for doc in da_docs}
         rt_map = {doc['time_str']: doc for doc in rt_docs}
 
         # 2. 获取分时电价规则
@@ -581,12 +558,12 @@ def get_spread_attribution_analysis(date: str = Query(..., description="查询�
         time_series = []
         period_collector = {}
 
-        # 3. 计算96点偏差 & 初始化聚合器
-        for i in range(96):
-            time_obj = start_date + timedelta(minutes=15 * i)
-            time_str = time_obj.strftime("%H:%M")
+        # 3. 以日前数据为基准，计算96点偏差 & 初始化聚合器
+        for da_point in da_docs:
+            time_str = da_point.get("time_str")
+            if not time_str:
+                continue
 
-            da_point = da_map.get(time_str, {})
             rt_point = rt_map.get(time_str, {})
 
             # 计算价格偏差

@@ -146,8 +146,8 @@ export const Sidebar: React.FC<{ isMobile?: boolean }> = ({ isMobile = false }) 
     const navigate = useNavigate();
     const [open, setOpen] = useState<{ [key: string]: boolean }>({});
 
-    // 只在桌面端使用 TabContext
-    const tabContext = !isMobile ? useTabContext() : null;
+    // Hook 必须无条件调用，在使用时再判断是否为移动端
+    const tabContext = useTabContext();
 
     const handleClick = (text: string) => {
         setOpen(prev => ({ ...prev, [text]: !prev[text] }));

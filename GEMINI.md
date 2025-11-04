@@ -40,15 +40,6 @@ npm test --prefix frontend
 
 前端开发服务器运行在 `http://localhost:3000`，已配置代理，所有 `/api` 请求会转发到后端 `http://127.0.0.1:8005`。
 
-## 前端开发工作流
-
-**重要**：在开始前端开发任务时，应首先在后台启动开发服务器，并将日志输出到指定文件，以便自主诊断编译错误：
-
-```bash
-npm start --prefix frontend > ~\.gemini\tmp\frontend_dev.log 2>&1 &
-```
-
-当遇到编译错误时，首要行动是读取 `frontend_dev.log` 文件内容以获取详细错误信息，然后进行修复。
 
 ## 代码架构
 
@@ -210,13 +201,336 @@ return (
 
 **使用方法**：参考 `docs/技术方案与编码规范.md` 中 `3.8.2. useSelectableSeries` 的详细说明（如果存在）。
 
-### 4. 移动端响应式设计
+### 4. 移动端响应式设计规范
 
 **强制要求**：
 - 所有页面和组件**必须**采用移动端优先的响应式设计
 - 优先使用 Material-UI 的栅格系统（`Grid`）和断点（`sx` 属性）实现响应式布局
 - 在开发新的图表功能或交互时，**必须**首先检查 `frontend/src/hooks/` 目录下是否存在已有的可复用 Hook
 - 避免重复造轮子，优先使用现有 Hook
+
+#### 4.1 标准响应式断点
+
+Material-UI 提供的标准断点：
+
+| 断点 | 屏幕宽度 | 设备类型 |
+|------|---------|---------|
+| `xs` | 0px+ | 手机（竖屏） |
+| `sm` | 600px+ | 手机（横屏）、小平板 |
+| `md` | 900px+ | 平板 |
+| `lg` | 1200px+ | 桌面 |
+| `xl` | 1536px+ | 大屏桌面 |
+
+#### 4.2 日期选择器规范
+
+**统一标准**（参考：MarketDashboardTab、DayAheadAnalysisTab、RealTimeAnalysisTab、SpreadAnalysisTab）
+
+```tsx
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { zhCN } from 'date-fns/locale';
+import ArrowLeftIcon from '@mui/icons-material/ArrowLeft';
+import ArrowRightIcon from '@mui/icons-material/ArrowRight';
+import { addDays } from 'date-fns';
+
+// 1. 状态管理
+const [selectedDate, setSelectedDate] = useState<Date | null>(addDays(new Date(), -1));
+
+// 2. 自动加载数据（监听日期变化）
+useEffect(() => {
+    fetchData(selectedDate);
+}, [selectedDate]);
+
+// 3. 日期导航
+const handleShiftDate = (days: number) => {
+    if (!selectedDate) return;
+    const newDate = addDays(selectedDate, days);
+    setSelectedDate(newDate);  // useEffect 会自动触发 fetchData
+};
+
+// 4. UI 渲染（必须用 LocalizationProvider 包裹整个组件）
+return (
+    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhCN}>
+        <Box>
+            <Paper variant="outlined" sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                <IconButton onClick={() => handleShiftDate(-1)}>
+                    <ArrowLeftIcon />
+                </IconButton>
+
+                <DatePicker
+                    label="选择日期"
+                    value={selectedDate}
+                    onChange={(date) => setSelectedDate(date)}
+                    slotProps={{
+                        textField: {
+                            sx: { width: { xs: '150px', sm: '200px' } }  // 响应式宽度
+                        }
+                    }}
+                />
+
+                <IconButton onClick={() => handleShiftDate(1)}>
+                    <ArrowRightIcon />
+                </IconButton>
+            </Paper>
+
+            {/* 其他内容 */}
+        </Box>
+    </LocalizationProvider>
+);
+```
+
+**关键要点**：
+- ✅ 日期框宽度：`xs: 150px`, `sm: 200px`（确保手机端单行显示）
+- ✅ 使用 `ArrowLeft`/`ArrowRight` 图标（不使用 `ArrowBackIosNew`/`ArrowForwardIos`）
+- ✅ 自动加载：监听 `selectedDate` 变化，**无需查询按钮**
+- ✅ Paper 容器：`p: 2, gap: 1, flexWrap: 'wrap'`
+- ✅ LocalizationProvider 包裹整个组件返回内容
+
+#### 4.3 图表容器规范
+
+**统一的图表高度设置**（参考：所有已优化的 Tab 组件）
+
+```tsx
+<Box
+    ref={chartRef}
+    sx={{
+        height: { xs: 350, sm: 400 },  // 移动端 350px，桌面端 400px
+        position: 'relative',
+        backgroundColor: isFullscreen ? 'background.paper' : 'transparent',
+        p: isFullscreen ? 2 : 0,
+        ...(isFullscreen && {
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 1400
+        })
+    }}
+>
+    <ResponsiveContainer width="100%" height="100%">
+        {/* Recharts 图表 */}
+    </ResponsiveContainer>
+</Box>
+```
+
+**关键要点**：
+- ✅ 响应式高度：移动端 350px，桌面端 400px
+- ✅ 使用 `ResponsiveContainer` 确保图表自适应
+- ✅ 全屏状态样式：固定定位 + 全屏尺寸 + 高 z-index
+
+#### 4.4 Grid 布局规范
+
+**响应式间距**（参考：MarketDashboardTab、SpreadAnalysisTab）
+
+```tsx
+<Grid container spacing={{ xs: 1, sm: 2 }}>
+    <Grid size={{ xs: 12, md: 6 }}>
+        {/* 移动端全宽，桌面端半宽 */}
+    </Grid>
+    <Grid size={{ xs: 12, md: 6 }}>
+        {/* 移动端全宽，桌面端半宽 */}
+    </Grid>
+    <Grid size={{ xs: 12 }}>
+        {/* 始终全宽 */}
+    </Grid>
+</Grid>
+```
+
+**关键要点**：
+- ✅ 间距响应式：`spacing={{ xs: 1, sm: 2 }}`（移动端减小间距）
+- ✅ 使用 `size` 属性而非 `xs`/`md` 属性（Grid v7 语法）
+- ✅ 常见布局：`xs: 12`（移动端全宽）+ `md: 6`（桌面端两列）
+
+#### 4.5 表格响应式规范
+
+**移动端表格优化**（参考：MarketDashboardTab、SpreadAnalysisTab）
+
+```tsx
+<TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+    <Table
+        sx={{
+            '& .MuiTableCell-root': {
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },  // 响应式字体
+                px: { xs: 0.5, sm: 2 },  // 响应式内边距
+            }
+        }}
+    >
+        {/* 表格内容 */}
+    </Table>
+</TableContainer>
+```
+
+**关键要点**：
+- ✅ 添加 `overflowX: 'auto'` 确保横向滚动
+- ✅ 字体大小：`xs: 0.75rem`, `sm: 0.875rem`
+- ✅ 内边距：`xs: 0.5`, `sm: 2`
+- ✅ 移动端减小字体和内边距以节省空间
+
+#### 4.6 Paper 容器响应式规范
+
+```tsx
+<Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mt: 2 }}>
+    {/* 内容 */}
+</Paper>
+```
+
+**关键要点**：
+- ✅ 内边距响应式：`p: { xs: 1, sm: 2 }`
+- ✅ 移动端减小内边距以节省空间
+
+#### 4.7 响应式开发检查清单
+
+开发完成后，使用以下检查清单进行自检：
+
+**日期选择器**
+- [ ] 日期框宽度为 `{ xs: '150px', sm: '200px' }`
+- [ ] 使用 `ArrowLeft`/`ArrowRight` 图标
+- [ ] 实现自动加载（监听 `selectedDate` 变化）
+- [ ] Paper 容器使用 `p: 2, gap: 1, flexWrap: 'wrap'`
+- [ ] LocalizationProvider 包裹整个组件
+
+**图表容器**
+- [ ] 图表高度为 `{ xs: 350, sm: 400 }`
+- [ ] 使用 `useChartFullscreen` Hook
+- [ ] 使用 `ResponsiveContainer`
+
+**Grid 布局**
+- [ ] 间距使用 `spacing={{ xs: 1, sm: 2 }}`
+- [ ] 使用 `size` 属性（Grid v7 语法）
+- [ ] 移动端优先（`xs: 12` 全宽）
+
+**表格**
+- [ ] TableContainer 设置 `overflowX: 'auto'`
+- [ ] 字体大小：`{ xs: '0.75rem', sm: '0.875rem' }`
+- [ ] 内边距：`{ xs: 0.5, sm: 2 }`
+
+**测试设备**
+- [ ] iPhone SE (375px 宽)
+- [ ] iPhone 12/13 (390px 宽)
+- [ ] Galaxy S8 (360px 宽)
+- [ ] 桌面端 (1200px+ 宽)
+
+---
+
+### 5. Tab 组件开发模板
+
+当开发新的 Tab 组件时，请参考以下模板以确保符合所有规范：
+
+**位置**：`docs/TabComponentTemplate.tsx`（如果存在）
+
+**核心结构**：
+```tsx
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, CircularProgress, Typography, Paper, IconButton, Grid } from '@mui/material';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { zhCN } from 'date-fns/locale';
+import ArrowLeftIcon from '@mui/icons-material/ArrowLeft';
+import ArrowRightIcon from '@mui/icons-material/ArrowRight';
+import { format, addDays } from 'date-fns';
+import apiClient from '../api/client';
+import { useChartFullscreen } from '../hooks/useChartFullscreen';
+// 根据需要导入其他 Hooks
+
+export const MyNewTab: React.FC = () => {
+    const [selectedDate, setSelectedDate] = useState<Date | null>(addDays(new Date(), -1));
+    const [loading, setLoading] = useState(false);
+    const [data, setData] = useState<any[]>([]);
+
+    const chartRef = useRef<HTMLDivElement>(null);
+    const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
+
+    // 全屏 Hook
+    const { isFullscreen, FullscreenEnterButton, FullscreenExitButton, FullscreenTitle, NavigationButtons } =
+        useChartFullscreen({
+            chartRef,
+            title: `标题 (${dateStr})`,
+            onPrevious: () => handleShiftDate(-1),
+            onNext: () => handleShiftDate(1)
+        });
+
+    // 数据加载
+    const fetchData = (date: Date | null) => {
+        if (!date) return;
+        setLoading(true);
+        const formattedDate = format(date, 'yyyy-MM-dd');
+        apiClient.get(`/api/v1/your-endpoint?date=${formattedDate}`)
+            .then(response => setData(response.data))
+            .catch(error => {
+                console.error('Error:', error);
+                setData([]);
+            })
+            .finally(() => setLoading(false));
+    };
+
+    // 自动加载
+    useEffect(() => {
+        fetchData(selectedDate);
+    }, [selectedDate]);
+
+    // 日期导航
+    const handleShiftDate = (days: number) => {
+        if (!selectedDate) return;
+        const newDate = addDays(selectedDate, days);
+        setSelectedDate(newDate);
+    };
+
+    return (
+        <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhCN}>
+            <Box>
+                {/* 日期选择器 */}
+                <Paper variant="outlined" sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <IconButton onClick={() => handleShiftDate(-1)}><ArrowLeftIcon /></IconButton>
+                    <DatePicker
+                        label="选择日期"
+                        value={selectedDate}
+                        onChange={(date) => setSelectedDate(date)}
+                        slotProps={{ textField: { sx: { width: { xs: '150px', sm: '200px' } } } }}
+                    />
+                    <IconButton onClick={() => handleShiftDate(1)}><ArrowRightIcon /></IconButton>
+                </Paper>
+
+                {/* 图表容器 */}
+                <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
+                    <Typography variant="h6" gutterBottom>图表标题</Typography>
+                    <Box
+                        ref={chartRef}
+                        sx={{
+                            height: { xs: 350, sm: 400 },
+                            position: 'relative',
+                            backgroundColor: isFullscreen ? 'background.paper' : 'transparent',
+                            p: isFullscreen ? 2 : 0,
+                            ...(isFullscreen && { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1400 })
+                        }}
+                    >
+                        <FullscreenEnterButton />
+                        <FullscreenExitButton />
+                        <FullscreenTitle />
+                        <NavigationButtons />
+
+                        {loading ? (
+                            <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                                <CircularProgress />
+                            </Box>
+                        ) : !data || data.length === 0 ? (
+                            <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                                <Typography>无数据</Typography>
+                            </Box>
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                {/* Recharts 图表 */}
+                            </ResponsiveContainer>
+                        )}
+                    </Box>
+                </Paper>
+            </Box>
+        </LocalizationProvider>
+    );
+};
+```
+
+
 
 ## 后端开发规范
 

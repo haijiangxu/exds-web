@@ -14,9 +14,9 @@ import {
     TableHead,
     TableRow
 } from '@mui/material';
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import ArrowLeftIcon from '@mui/icons-material/ArrowLeft';
+import ArrowRightIcon from '@mui/icons-material/ArrowRight';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot } from 'recharts';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -37,7 +37,7 @@ interface FinancialKPIs {
 
 interface RiskKPI {
     value: number;
-    time: string;
+    time_str: string;
     period: number;
 }
 
@@ -51,6 +51,7 @@ interface RiskKPIs {
 interface TimeSeriesPoint {
     period: number;
     time: string;
+    time_str: string;
     price_rt: number | null;
     price_da: number | null;
     volume_rt: number;
@@ -90,8 +91,8 @@ const FinancialKPIsPanel: React.FC<{ kpis: FinancialKPIs }> = ({ kpis }) => (
         <Grid container spacing={1.5}>
             <Grid size={{ xs: 6, sm: 4 }}>
                 <Box textAlign="center">
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem' }}>
-                        现货加权均价
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '1rem' }}>
+                        实时加权均价
                     </Typography>
                     <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', my: 0.5 }}>
                         {kpis.vwap_rt !== null ? kpis.vwap_rt.toFixed(2) : 'N/A'}
@@ -100,7 +101,7 @@ const FinancialKPIsPanel: React.FC<{ kpis: FinancialKPIs }> = ({ kpis }) => (
             </Grid>
             <Grid size={{ xs: 6, sm: 4 }}>
                 <Box textAlign="center">
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem' }}>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '1rem' }}>
                         日前加权均价
                     </Typography>
                     <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'info.main', my: 0.5 }}>
@@ -110,7 +111,7 @@ const FinancialKPIsPanel: React.FC<{ kpis: FinancialKPIs }> = ({ kpis }) => (
             </Grid>
             <Grid size={{ xs: 6, sm: 4 }}>
                 <Box textAlign="center">
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem' }}>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '1rem' }}>
                         日均加权价差
                     </Typography>
                     <Typography
@@ -127,8 +128,8 @@ const FinancialKPIsPanel: React.FC<{ kpis: FinancialKPIs }> = ({ kpis }) => (
             </Grid>
             <Grid size={{ xs: 6, sm: 4 }}>
                 <Box textAlign="center">
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem' }}>
-                        现货算术均价
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '1rem' }}>
+                        实时算术均价
                     </Typography>
                     <Typography variant="h6" sx={{ fontWeight: 'bold', my: 0.5 }}>
                         {kpis.twap_rt !== null ? kpis.twap_rt.toFixed(2) : 'N/A'}
@@ -137,7 +138,7 @@ const FinancialKPIsPanel: React.FC<{ kpis: FinancialKPIs }> = ({ kpis }) => (
             </Grid>
             <Grid size={{ xs: 6, sm: 4 }}>
                 <Box textAlign="center">
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem' }}>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '1rem' }}>
                         日前算术均价
                     </Typography>
                     <Typography variant="h6" sx={{ fontWeight: 'bold', my: 0.5 }}>
@@ -162,17 +163,17 @@ const RiskKPIsPanel: React.FC<{ kpis: RiskKPIs }> = ({ kpis }) => (
         </Box>
         <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, sm: 6 }}>
-                <Box>
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem' }}>
+                <Box textAlign="center">
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '1rem' }}>
                         最大正价差（最大亏损点）
                     </Typography>
                     {kpis.max_positive_spread ? (
-                        <Box display="flex" alignItems="baseline" gap={1} flexWrap="wrap">
+                        <Box display="flex" alignItems="baseline" gap={1} flexWrap="wrap" justifyContent="center">
                             <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'error.main' }}>
                                 {kpis.max_positive_spread.value.toFixed(2)}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                                {kpis.max_positive_spread.time} (第{kpis.max_positive_spread.period}段)
+                                {kpis.max_positive_spread.time_str} (第{kpis.max_positive_spread.period}段)
                             </Typography>
                         </Box>
                     ) : (
@@ -181,17 +182,17 @@ const RiskKPIsPanel: React.FC<{ kpis: RiskKPIs }> = ({ kpis }) => (
                 </Box>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-                <Box>
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem' }}>
+                <Box textAlign="center">
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '1rem' }}>
                         最大负价差（最大盈利点）
                     </Typography>
                     {kpis.max_negative_spread ? (
-                        <Box display="flex" alignItems="baseline" gap={1} flexWrap="wrap">
+                        <Box display="flex" alignItems="baseline" gap={1} flexWrap="wrap" justifyContent="center">
                             <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'success.main' }}>
                                 {kpis.max_negative_spread.value.toFixed(2)}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                                {kpis.max_negative_spread.time} (第{kpis.max_negative_spread.period}段)
+                                {kpis.max_negative_spread.time_str} (第{kpis.max_negative_spread.period}段)
                             </Typography>
                         </Box>
                     ) : (
@@ -200,17 +201,17 @@ const RiskKPIsPanel: React.FC<{ kpis: RiskKPIs }> = ({ kpis }) => (
                 </Box>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-                <Box>
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem' }}>
-                        现货最高价
+                <Box textAlign="center">
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '1rem' }}>
+                        实时最高价
                     </Typography>
                     {kpis.max_rt_price ? (
-                        <Box display="flex" alignItems="baseline" gap={1} flexWrap="wrap">
+                        <Box display="flex" alignItems="baseline" gap={1} flexWrap="wrap" justifyContent="center">
                             <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
                                 {kpis.max_rt_price.value.toFixed(2)}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                                {kpis.max_rt_price.time} (第{kpis.max_rt_price.period}段)
+                                {kpis.max_rt_price.time_str} (第{kpis.max_rt_price.period}段)
                             </Typography>
                         </Box>
                     ) : (
@@ -219,17 +220,17 @@ const RiskKPIsPanel: React.FC<{ kpis: RiskKPIs }> = ({ kpis }) => (
                 </Box>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-                <Box>
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem' }}>
-                        现货最低价
+                <Box textAlign="center">
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '1rem' }}>
+                        实时最低价
                     </Typography>
                     {kpis.min_rt_price ? (
-                        <Box display="flex" alignItems="baseline" gap={1} flexWrap="wrap">
+                        <Box display="flex" alignItems="baseline" gap={1} flexWrap="wrap" justifyContent="center">
                             <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'info.main' }}>
                                 {kpis.min_rt_price.value.toFixed(2)}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                                {kpis.min_rt_price.time} (第{kpis.min_rt_price.period}段)
+                                {kpis.min_rt_price.time_str} (第{kpis.min_rt_price.period}段)
                             </Typography>
                         </Box>
                     ) : (
@@ -241,65 +242,60 @@ const RiskKPIsPanel: React.FC<{ kpis: RiskKPIs }> = ({ kpis }) => (
     </Paper>
 );
 
+// Custom Tooltip 内容组件
+const CustomTooltipContent: React.FC<any> = ({ active, payload, label, unit }) => {
+    if (active && payload && payload.length) {
+        const periodType = payload[0].payload.period_type;
+        return (
+            <Paper sx={{ p: 1.5, backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #ccc', borderRadius: '4px' }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                    {`时间: ${label} (${periodType})`}
+                </Typography>
+                {payload.map((pld: any) => (
+                    <Typography key={pld.dataKey} variant="body2" sx={{ color: pld.color }}>
+                        {`${pld.name}: ${Number(pld.value).toFixed(2)} ${unit}`}
+                    </Typography>
+                ))}
+            </Paper>
+        );
+    }
+    return null;
+};
+
+
 // 价格曲线图组件
 const PriceChart: React.FC<{ data: TimeSeriesPoint[]; onPrevious: () => void; onNext: () => void }> = ({ data, onPrevious, onNext }) => {
     const chartRef = useRef<HTMLDivElement>(null);
 
     // 计算Y轴范围
     const prices = data.flatMap(d => [d.price_rt, d.price_da].filter(p => p !== null) as number[]);
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
+    const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+    const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
 
-    // 使用尖峰平谷背景Hook
-    const { TouPeriodAreas } = useTouPeriodBackground(data, '24:00');
-
-    // 使用全屏Hook（带导航按钮）
-    const {
-        isFullscreen,
-        FullscreenEnterButton,
-        FullscreenExitButton,
-        FullscreenTitle,
-        NavigationButtons
-    } = useChartFullscreen({
-        chartRef,
-        title: '核心价格曲线',
-        onPrevious,
-        onNext
-    });
+    const { TouPeriodAreas } = useTouPeriodBackground(data);
 
     return (
         <Box sx={{ mt: 2 }}>
-            <Typography variant="h6" gutterBottom>核心价格曲线</Typography>
+            <Typography variant="h6" gutterBottom>价格曲线</Typography>
             <Paper variant="outlined" sx={{ p: 2, mt: 1 }}>
                 <Box
                     ref={chartRef}
                     sx={{
-                        height: 400,
+                        height: { xs: 350, sm: 400 },
                         position: 'relative',
-                        backgroundColor: isFullscreen ? 'background.paper' : 'transparent',
-                        p: isFullscreen ? 2 : 0,
                     }}
                 >
-                    <FullscreenEnterButton />
-                    <FullscreenExitButton />
-                    <FullscreenTitle />
-                    <NavigationButtons />
-
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                            {/* 背景色块 - 尖峰平谷 */}
+                        <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                             {TouPeriodAreas}
-
                             <CartesianGrid strokeDasharray="3 3" />
-
                             <XAxis
-                                dataKey="time"
+                                dataKey="time_str"
                                 tick={{ fontSize: 12 }}
                                 interval={23}
                             />
-
                             <YAxis
-                                domain={[Math.floor(minPrice * 0.95), Math.ceil(maxPrice * 1.05)]}
+                                domain={[Math.floor(minPrice * 0.9), Math.ceil(maxPrice * 1.1)]}
                                 label={{
                                     value: '价格 (元/MWh)',
                                     angle: -90,
@@ -307,33 +303,16 @@ const PriceChart: React.FC<{ data: TimeSeriesPoint[]; onPrevious: () => void; on
                                 }}
                                 tick={{ fontSize: 12 }}
                             />
-
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                                    border: '1px solid #ccc',
-                                    borderRadius: '4px'
-                                }}
-                                formatter={(value: any, name: string) => [
-                                    `${Number(value).toFixed(2)} 元/MWh`,
-                                    name === 'price_rt' ? '现货价格' : '日前价格'
-                                ]}
-                                labelFormatter={(label) => `时刻: ${label}`}
-                            />
-
+                            <Tooltip content={<CustomTooltipContent unit="元/MWh" />} />
                             <Legend />
-
-                            {/* 现货价格 - 实线 */}
                             <Line
                                 type="monotone"
                                 dataKey="price_rt"
                                 stroke="#f44336"
                                 strokeWidth={2}
-                                name="现货价格"
+                                name="实时价格"
                                 dot={false}
                             />
-
-                            {/* 日前价格 - 虚线 */}
                             <Line
                                 type="monotone"
                                 dataKey="price_da"
@@ -357,69 +336,35 @@ const VolumeChart: React.FC<{ data: TimeSeriesPoint[]; onPrevious: () => void; o
 
     // 计算Y轴范围
     const volumes = data.flatMap(d => [d.volume_rt, d.volume_da]);
-    const minVolume = Math.min(...volumes);
-    const maxVolume = Math.max(...volumes);
+    const minVolume = volumes.length > 0 ? Math.min(...volumes) : 0;
+    const maxVolume = volumes.length > 0 ? Math.max(...volumes) : 0;
 
-    // 使用尖峰平谷背景Hook
-    const { TouPeriodAreas } = useTouPeriodBackground(data, '24:00');
-
-    // 使用全屏Hook（带导航按钮）
-    const {
-        isFullscreen,
-        FullscreenEnterButton,
-        FullscreenExitButton,
-        FullscreenTitle,
-        NavigationButtons
-    } = useChartFullscreen({
-        chartRef,
-        title: '核心负荷曲线',
-        onPrevious,
-        onNext
-    });
+    const { TouPeriodAreas } = useTouPeriodBackground(data);
 
     return (
         <Paper variant="outlined" sx={{ mt: 1 }}>
             <Box sx={{ p: { xs: 1, sm: 2 } }}>
                 <Typography variant="h6" gutterBottom>
-                    核心负荷曲线
+                    负荷曲线
                 </Typography>
                 <Box
                     ref={chartRef}
                     sx={{
-                        height: 400,
+                        height: { xs: 350, sm: 400 },
                         position: 'relative',
-                        backgroundColor: isFullscreen ? 'background.paper' : 'transparent',
-                        p: isFullscreen ? 2 : 0,
-                        ...(isFullscreen && {
-                            position: 'fixed',
-                            top: 0,
-                            left: 0,
-                            width: '100vw',
-                            height: '100vh',
-                            zIndex: 1400,
-                        })
                     }}
                 >
-                    <FullscreenEnterButton />
-                    <FullscreenExitButton />
-                    <FullscreenTitle />
-                    <NavigationButtons />
-
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                            {/* 背景色块 - 尖峰平谷 */}
+                        <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                             {TouPeriodAreas}
-
                             <CartesianGrid strokeDasharray="3 3" />
-
                             <XAxis
-                                dataKey="time"
+                                dataKey="time_str"
                                 tick={{ fontSize: 12 }}
                                 interval={23}
                             />
-
                             <YAxis
-                                domain={[Math.floor(minVolume * 0.95), Math.ceil(maxVolume * 1.05)]}
+                                domain={[Math.floor(minVolume * 0.9), Math.ceil(maxVolume * 1.1)]}
                                 label={{
                                     value: '电量 (MWh)',
                                     angle: -90,
@@ -427,33 +372,16 @@ const VolumeChart: React.FC<{ data: TimeSeriesPoint[]; onPrevious: () => void; o
                                 }}
                                 tick={{ fontSize: 12 }}
                             />
-
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                                    border: '1px solid #ccc',
-                                    borderRadius: '4px'
-                                }}
-                                formatter={(value: any, name: string) => [
-                                    `${Number(value).toFixed(2)} MWh`,
-                                    name === 'volume_rt' ? '现货电量' : '日前电量'
-                                ]}
-                                labelFormatter={(label) => `时刻: ${label}`}
-                            />
-
+                            <Tooltip content={<CustomTooltipContent unit="MWh" />} />
                             <Legend />
-
-                            {/* 现货电量 - 实线 */}
                             <Line
                                 type="monotone"
                                 dataKey="volume_rt"
                                 stroke="#ff9800"
                                 strokeWidth={2}
-                                name="现货电量"
+                                name="实时电量"
                                 dot={false}
                             />
-
-                            {/* 日前电量 - 虚线 */}
                             <Line
                                 type="monotone"
                                 dataKey="volume_da"
@@ -473,15 +401,38 @@ const VolumeChart: React.FC<{ data: TimeSeriesPoint[]; onPrevious: () => void; o
 
 // 时段汇总表格组件
 const PeriodSummaryTable: React.FC<{ data: PeriodSummary[] }> = ({ data }) => (
-    <TableContainer component={Paper} elevation={2}>
-        <Table>
+    <TableContainer component={Paper} elevation={2} sx={{ overflowX: 'auto' }}>
+        <Table
+            sx={{
+                '& .MuiTableCell-root': {
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    px: { xs: 0.5, sm: 2 },
+                }
+            }}
+        >
             <TableHead>
                 <TableRow>
                     <TableCell sx={{ fontWeight: 'bold' }}>时段</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>日前VWAP<br />(元/MWh)</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>现货VWAP<br />(元/MWh)</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>加权价差<br />(元/MWh)</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>平均电量<br />(MWh)</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                        日前VWAP
+                        <br />
+                        (元/MWh)
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                        现货VWAP
+                        <br />
+                        (元/MWh)
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                        加权价差
+                        <br />
+                        (元/MWh)
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                        平均电量
+                        <br />
+                        (MWh)
+                    </TableCell>
                     <TableCell align="right" sx={{ fontWeight: 'bold' }}>新能源占比</TableCell>
                 </TableRow>
             </TableHead>
@@ -537,11 +488,19 @@ export const MarketDashboardTab: React.FC = () => {
             try {
                 const dateStr = format(selectedDate, 'yyyy-MM-dd');
                 const response = await apiClient.get('/api/v1/market-analysis/dashboard', {
-                    params: { date: dateStr }
+                    params: { date_str: dateStr }
                 });
                 setData(response.data);
             } catch (err: any) {
-                setError(err.response?.data?.detail || '加载数据失败');
+                if (typeof err.response?.data?.detail === 'string') {
+                    setError(err.response.data.detail);
+                } else if (err instanceof Error) {
+                    setError(err.message);
+                } else if (typeof err === 'object' && err !== null) {
+                    setError(JSON.stringify(err));
+                } else {
+                    setError('加载数据失败，发生未知错误');
+                }
             } finally {
                 setLoading(false);
             }
@@ -584,35 +543,31 @@ export const MarketDashboardTab: React.FC = () => {
     if (!data) return null;
 
     return (
-        <Box>
-            {/* 日期选择器 + 导航器 */}
-            <Paper elevation={1} sx={{ p: { xs: 1.5, sm: 2 }, mb: { xs: 2, sm: 3 } }}>
-                <Box display="flex" alignItems="center" justifyContent="center" gap={{ xs: 1, sm: 2 }} flexWrap="wrap">
-                    <IconButton onClick={handlePreviousDay} color="primary" size="small">
-                        <ArrowBackIosNewIcon fontSize="small" />
+        <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhCN}>
+            <Box>
+                {/* 日期选择器 + 导航器 */}
+                <Paper variant="outlined" sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <IconButton onClick={handlePreviousDay}>
+                        <ArrowLeftIcon />
                     </IconButton>
 
-                    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhCN}>
-                        <DatePicker
-                            label="选择日期"
-                            value={selectedDate}
-                            onChange={(newDate) => setSelectedDate(newDate)}
-                            slotProps={{
-                                textField: {
-                                    size: 'small',
-                                    sx: { minWidth: { xs: '150px', sm: '200px' } }
-                                }
-                            }}
-                        />
-                    </LocalizationProvider>
+                    <DatePicker
+                        label="选择日期"
+                        value={selectedDate}
+                        onChange={(newDate) => setSelectedDate(newDate)}
+                        slotProps={{
+                            textField: {
+                                sx: { width: { xs: '150px', sm: '200px' } }
+                            }
+                        }}
+                    />
 
-                    <IconButton onClick={handleNextDay} color="primary" size="small">
-                        <ArrowForwardIosIcon fontSize="small" />
+                    <IconButton onClick={handleNextDay}>
+                        <ArrowRightIcon />
                     </IconButton>
-                </Box>
-            </Paper>
+                </Paper>
 
-            <Grid container spacing={{ xs: 2, sm: 3 }}>
+            <Grid container spacing={{ xs: 1, sm: 2 }}>
                 {/* 财务指标大卡片 - 桌面端左侧，移动端全宽 */}
                 <Grid size={{ xs: 12, md: 6 }}>
                     <FinancialKPIsPanel kpis={data.financial_kpis} />
@@ -642,5 +597,6 @@ export const MarketDashboardTab: React.FC = () => {
                 </Grid>
             </Grid>
         </Box>
+        </LocalizationProvider>
     );
 };

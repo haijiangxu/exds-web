@@ -18,6 +18,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import PlaceholderPage from './components/PlaceholderPage';
 import GridAgencyPricePage from './pages/GridAgencyPricePage';
 import { TabProvider } from './contexts/TabContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { DesktopTabLayout } from './layouts/DesktopTabLayout';
 import { MobileSimpleLayout } from './layouts/MobileSimpleLayout';
 
@@ -94,22 +95,24 @@ function App() {
         <ThemeProvider theme={theme}>
             <CssBaseline />
             <Router>
-                <Routes>
-                    {/* 登录页面 */}
-                    <Route path="/login" element={<LoginPage />} />
+                <AuthProvider>
+                    <Routes>
+                        {/* 登录页面 */}
+                        <Route path="/login" element={<LoginPage />} />
 
-                    {/* 受保护的路由 */}
-                    <Route element={<ProtectedRoute />}>
-                        <Route
-                            path="/*"
-                            element={
-                                <TabProvider>
-                                    <ResponsiveLayout />
-                                </TabProvider>
-                            }
-                        />
-                    </Route>
-                </Routes>
+                        {/* 受保护的路由 */}
+                        <Route element={<ProtectedRoute />}>
+                            <Route
+                                path="/*"
+                                element={
+                                    <TabProvider>
+                                        <ResponsiveLayout />
+                                    </TabProvider>
+                                }
+                            />
+                        </Route>
+                    </Routes>
+                </AuthProvider>
             </Router>
         </ThemeProvider>
     );

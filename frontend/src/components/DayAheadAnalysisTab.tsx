@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-    Box, Button, CircularProgress, Typography, Paper, IconButton, Grid
+    Box, CircularProgress, Typography, Paper, IconButton, Grid
 } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -69,15 +69,12 @@ export const DayAheadAnalysisTab: React.FC = () => {
 
     useEffect(() => {
         fetchData(selectedDate);
-    }, []);
-
-    const handleQuery = () => fetchData(selectedDate);
+    }, [selectedDate]);
 
     const handleShiftDate = (days: number) => {
         if (!selectedDate) return;
         const newDate = addDays(selectedDate, days);
         setSelectedDate(newDate);
-        fetchData(newDate);
     };
 
     const renderChartContainer = (ref: React.RefObject<HTMLDivElement | null>, isFullscreen: boolean, title: string, enter: React.ReactElement, exit: React.ReactElement, fsTitle: React.ReactElement, nav: React.ReactElement, chart: React.ReactElement) => (
@@ -112,9 +109,8 @@ export const DayAheadAnalysisTab: React.FC = () => {
             <Box>
                 <Paper variant="outlined" sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                     <IconButton onClick={() => handleShiftDate(-1)}><ArrowLeftIcon /></IconButton>
-                    <DatePicker label="选择日期" value={selectedDate} onChange={(date) => setSelectedDate(date)} />
+                    <DatePicker label="选择日期" value={selectedDate} onChange={(date) => setSelectedDate(date)} slotProps={{ textField: { sx: { width: { xs: '150px', sm: '200px' } } } }} />
                     <IconButton onClick={() => handleShiftDate(1)}><ArrowRightIcon /></IconButton>
-                    <Button sx={{ ml: 2 }} variant="contained" onClick={handleQuery} disabled={loading}>{loading ? <CircularProgress size={24} /> : '查询'}</Button>
                 </Paper>
 
                 {renderChartContainer(priceVolumeChartRef, isPriceVolumeFullscreen, '日前价格与负荷', FSEnter1(), FSExit1(), FSTitle1(), FSNav1(),

@@ -14,9 +14,11 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { login } from '../api/client'; // 导入真实的login API
 import { AxiosError } from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
+    const { login: authLogin } = useAuth(); // 使用 AuthContext 的 login 方法
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -36,7 +38,8 @@ const LoginPage: React.FC = () => {
         try {
             const response = await login(username, password);
             if (response.data && response.data.access_token) {
-                localStorage.setItem('token', response.data.access_token);
+                // 使用 AuthContext 的 login 方法，它会自动处理 token 保存和定时器
+                authLogin(response.data.access_token);
                 navigate('/');
             } else {
                 throw new Error('Token not found in response');

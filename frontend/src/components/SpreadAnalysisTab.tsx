@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-    Box, Button, CircularProgress, Typography, Paper, IconButton, Grid, FormGroup, FormControlLabel, Checkbox, Table, TableBody, TableCell, TableContainer, TableHead, TableRow
+    Box, CircularProgress, Typography, Paper, IconButton, Grid, FormGroup, FormControlLabel, Checkbox, Table, TableBody, TableCell, TableContainer, TableHead, TableRow
 } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -47,7 +47,6 @@ export const SpreadAnalysisTab: React.FC = () => {
         if (!selectedDate) return;
         const newDate = addDays(selectedDate, days);
         setSelectedDate(newDate);
-        fetchData(newDate);
     };
 
     const { isFullscreen: isFs1, FullscreenEnterButton: FSEnter1, FullscreenExitButton: FSExit1, FullscreenTitle: FSTitle1, NavigationButtons: FSNav1 } = useChartFullscreen({ chartRef: chart1Ref, title: `价格偏差主图 (${dateStr})`, onPrevious: () => handleShiftDate(-1), onNext: () => handleShiftDate(1) });
@@ -88,11 +87,9 @@ export const SpreadAnalysisTab: React.FC = () => {
             .finally(() => setLoading(false));
     };
 
-    useEffect(() => { 
-        fetchData(selectedDate); 
-    }, []);
-
-    const handleQuery = () => fetchData(selectedDate);
+    useEffect(() => {
+        fetchData(selectedDate);
+    }, [selectedDate]);
 
     const renderTableCell = (value: number | null) => {
         if (value === null || value === undefined) return <TableCell align="right">N/A</TableCell>;
@@ -106,7 +103,7 @@ export const SpreadAnalysisTab: React.FC = () => {
             <Box
                 ref={ref}
                 sx={{
-                    height: height,
+                    height: { xs: 350, sm: height },
                     position: 'relative',
                     backgroundColor: isFullscreen ? 'background.paper' : 'transparent',
                     p: isFullscreen ? 2 : 0,
@@ -130,17 +127,25 @@ export const SpreadAnalysisTab: React.FC = () => {
             <Box>
                 <Paper variant="outlined" sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                     <IconButton onClick={() => handleShiftDate(-1)}><ArrowLeftIcon /></IconButton>
-                    <DatePicker label="选择日期" value={selectedDate} onChange={(date) => setSelectedDate(date)} />
+                    <DatePicker
+                        label="选择日期"
+                        value={selectedDate}
+                        onChange={(date) => setSelectedDate(date)}
+                        slotProps={{
+                            textField: {
+                                sx: { width: { xs: '150px', sm: '200px' } }
+                            }
+                        }}
+                    />
                     <IconButton onClick={() => handleShiftDate(1)}><ArrowRightIcon /></IconButton>
-                    <Button sx={{ ml: 2 }} variant="contained" onClick={handleQuery} disabled={loading}>{loading ? <CircularProgress size={24} /> : '查询'}</Button>
                 </Paper>
 
-                <Grid container spacing={2} sx={{ mt: 0 }}>
+                <Grid container spacing={{ xs: 1, sm: 2 }} sx={{ mt: 2 }}>
                     <Grid size={{ xs: 12, md: 6 }}>
                         {renderChartContainer(chart1Ref, isFs1, '价格偏差主图', FSEnter1(), FSExit1(), FSTitle1(), FSNav1(),
                             <ComposedChart data={analysisData.time_series}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="time_str" interval={isFs1 ? 11 : 23} tick={{ fontSize: 10 }} />
+                                <XAxis dataKey="time_str" interval={11} tick={{ fontSize: 10 }} />
                                 <YAxis label={{ value: '价差(元/MWh)', angle: -90, position: 'insideLeft' }} tick={{ fontSize: 10 }} />
                                 <Tooltip content={<CustomTooltip unit="元/MWh" />} />
                                 <ReferenceLine y={0} stroke="#000" />
@@ -149,8 +154,7 @@ export const SpreadAnalysisTab: React.FC = () => {
                                         <Cell key={`cell-${index}`} fill={entry.price_spread > 0 ? '#f44336' : '#4caf50'} />
                                     ))}
                                 </Bar>
-                            </ComposedChart>,
-                            300
+                            </ComposedChart>
                         )}
                     </Grid>
                     <Grid size={{ xs: 12, md: 6 }}>
@@ -162,15 +166,14 @@ export const SpreadAnalysisTab: React.FC = () => {
                                 <ZAxis dataKey="time_str" name="时间" />
                                 <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomTooltip />} />
                                 <Scatter name="偏差关系" data={analysisData.time_series} fill="#8884d8" />
-                            </ScatterChart>,
-                            300
+                            </ScatterChart>
                         )}
                     </Grid>
                     <Grid size={{ xs: 12 }}>
                         {renderChartContainer(chart3Ref, isFs3, '核心偏差归因', FSEnter3(), FSExit3(), FSTitle3(), FSNav3(),
                             <ComposedChart data={analysisData.time_series}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="time_str" interval={isFs3 ? 5 : 11} tick={{ fontSize: 12 }} />
+                                <XAxis dataKey="time_str" interval={11} tick={{ fontSize: 12 }} />
                                 <YAxis yAxisId="left" label={{ value: '价差(元/MWh)', angle: -90, position: 'insideLeft' }} tick={{ fontSize: 12 }} />
                                 <YAxis yAxisId="right" orientation="right" label={{ value: '偏差(MWh)', angle: -90, position: 'insideRight' }} tick={{ fontSize: 12 }} />
                                 <Tooltip content={<CustomTooltip unitMap={{ price_spread: '元/MWh' }} unit="MWh" />} />
@@ -190,10 +193,18 @@ export const SpreadAnalysisTab: React.FC = () => {
                     </Grid>
                 </Grid>
 
-                <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
+                <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mt: 2 }}>
                     <Typography variant="h6" gutterBottom>系统性偏差分析</Typography>
-                    <TableContainer>
-                        <Table size="small">
+                    <TableContainer sx={{ overflowX: 'auto' }}>
+                        <Table
+                            size="small"
+                            sx={{
+                                '& .MuiTableCell-root': {
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                    px: { xs: 0.5, sm: 2 },
+                                }
+                            }}
+                        >
                             <TableHead>
                                 <TableRow>
                                     <TableCell>时段</TableCell>

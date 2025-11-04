@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-    Box, Button, CircularProgress, Typography, Paper, IconButton, Grid
+    Box, CircularProgress, Typography, Paper, IconButton, Grid
 } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -71,15 +71,12 @@ export const RealTimeAnalysisTab: React.FC = () => {
 
     useEffect(() => {
         fetchData(selectedDate);
-    }, []);
-
-    const handleQuery = () => fetchData(selectedDate);
+    }, [selectedDate]);
 
     const handleShiftDate = (days: number) => {
         if (!selectedDate) return;
         const newDate = addDays(selectedDate, days);
         setSelectedDate(newDate);
-        fetchData(newDate);
     };
 
     const renderChartContainer = (ref: React.RefObject<HTMLDivElement | null>, isFullscreen: boolean, title: string, enter: React.ReactElement, exit: React.ReactElement, fsTitle: React.ReactElement, nav: React.ReactElement, chart: React.ReactElement) => (
@@ -89,6 +86,7 @@ export const RealTimeAnalysisTab: React.FC = () => {
                 ref={ref}
                 sx={{
                     height: 400,
+                    minHeight: 400,
                     position: 'relative',
                     backgroundColor: isFullscreen ? 'background.paper' : 'transparent',
                     p: isFullscreen ? 2 : 0,
@@ -101,7 +99,7 @@ export const RealTimeAnalysisTab: React.FC = () => {
                 ) : !chartData || chartData.length === 0 ? (
                     <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}><Typography>无数据</Typography></Box>
                 ) : (
-                    <ResponsiveContainer width="100%" height="100%">{chart}</ResponsiveContainer>
+                    <ResponsiveContainer width="100%" height="100%" minHeight={350}>{chart}</ResponsiveContainer>
                 )}
             </Box>
         </Paper>
@@ -112,9 +110,8 @@ export const RealTimeAnalysisTab: React.FC = () => {
             <Box>
                 <Paper variant="outlined" sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                     <IconButton onClick={() => handleShiftDate(-1)}><ArrowLeftIcon /></IconButton>
-                    <DatePicker label="选择日期" value={selectedDate} onChange={(date) => setSelectedDate(date)} />
+                    <DatePicker label="选择日期" value={selectedDate} onChange={(date) => setSelectedDate(date)} slotProps={{ textField: { sx: { width: { xs: '150px', sm: '200px' } } } }} />
                     <IconButton onClick={() => handleShiftDate(1)}><ArrowRightIcon /></IconButton>
-                    <Button sx={{ ml: 2 }} variant="contained" onClick={handleQuery} disabled={loading}>{loading ? <CircularProgress size={24} /> : '查询'}</Button>
                 </Paper>
 
                 {renderChartContainer(priceVolumeChartRef, isFs1, '现货价格与负荷', FSEnter1(), FSExit1(), FSTitle1(), FSNav1(),

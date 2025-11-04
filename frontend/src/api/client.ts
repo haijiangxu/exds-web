@@ -27,6 +27,10 @@ apiClient.interceptors.request.use(
 
 // --- 响应拦截器 ---
 // 捕获所有API响应，如果遇到401错误，则认为token已过期，自动退出登录
+// 此拦截器作为"安全网"，处理以下边缘情况：
+// 1. 网络延迟导致请求在前端定时器触发后才到达服务器
+// 2. 客户端与服务器时钟不同步
+// 3. 服务器端主动吊销令牌
 apiClient.interceptors.response.use(
     (response) => {
         // 状态码在 2xx 范围内的任何响应都会触发此函数
@@ -36,6 +40,7 @@ apiClient.interceptors.response.use(
         // 任何超出 2xx 范围的状态码都会触发此函数
         if (error.response && error.response.status === 401) {
             // 如果是401错误，则清除token并重定向到登录页
+            console.warn('收到 401 响应，会话已失效');
             localStorage.removeItem('token');
             // 使用 window.location.href 来强制刷新页面，清除所有旧的状态
             window.location.href = '/login';

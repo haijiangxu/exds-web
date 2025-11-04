@@ -52,20 +52,39 @@ export const MarketPriceAnalysisPage: React.FC = () => {
             </Breadcrumbs>
 
             <Paper variant="outlined" sx={{ borderColor: 'divider' }}>
-                <Tabs value={tabIndex} onChange={handleTabChange} aria-label="market price analysis tabs">
-                    <Tab label="现货价格曲线" id="analysis-tab-0" aria-controls="analysis-tabpanel-0" />
-                    <Tab label="日前市场分析" id="analysis-tab-1" aria-controls="analysis-tabpanel-1" />
-                    <Tab label="现货市场复盘" id="analysis-tab-2" aria-controls="analysis-tabpanel-2" />
-                    <Tab label="价差归因分析" id="analysis-tab-3" aria-controls="analysis-tabpanel-3" />
-                    <Tab label="市场价格总览" id="analysis-tab-4" aria-controls="analysis-tabpanel-4" />
-                    <Tab label="时段价格曲线" id="analysis-tab-5" aria-controls="analysis-tabpanel-5" />
+                <Tabs
+                    value={tabIndex}
+                    onChange={handleTabChange}
+                    aria-label="market price analysis tabs"
+                    variant="scrollable"
+                    scrollButtons="auto"
+                    allowScrollButtonsMobile
+                    sx={{
+                        '& .MuiTabs-scrollButtons': {
+                            '&.Mui-disabled': { opacity: 0.3 }
+                        },
+                        '& .MuiTab-root': {
+                            minWidth: { xs: '45%', sm: 120 }, // 移动端每个Tab占45%宽度，确保只显示2个
+                            maxWidth: { xs: '45%', sm: 'none' }, // 移动端限制最大宽度
+                            fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+                            px: { xs: 1, sm: 2 } // 移动端减少内边距
+                        }
+                    }}
+                >
+                    <Tab label="市场价格总览" id="analysis-tab-0" aria-controls="analysis-tabpanel-0" />
+                    <Tab label="日前市场分析" id="analysis-tab-2" aria-controls="analysis-tabpanel-1" />
+                    <Tab label="现货市场复盘" id="analysis-tab-3" aria-controls="analysis-tabpanel-2" />
+                    <Tab label="价差归因分析" id="analysis-tab-4" aria-controls="analysis-tabpanel-3" />
+                    <Tab label="时段价格曲线" id="analysis-tab-5" aria-controls="analysis-tabpanel-4" />
+                    <Tab label="现货价格曲线" id="analysis-tab-1" aria-controls="analysis-tabpanel-5" />
+
                 </Tabs>
             </Paper>
             <TabPanel value={tabIndex} index={0}>
-                <PriceCurveComparisonTab />
+                <MarketDashboardTab />
             </TabPanel>
             <TabPanel value={tabIndex} index={1}>
-                <DayAheadAnalysisTab />
+               <DayAheadAnalysisTab />
             </TabPanel>
             <TabPanel value={tabIndex} index={2}>
                 <RealTimeAnalysisTab />
@@ -74,10 +93,10 @@ export const MarketPriceAnalysisPage: React.FC = () => {
                 <SpreadAnalysisTab />
             </TabPanel>
             <TabPanel value={tabIndex} index={4}>
-                <MarketDashboardTab />
+                <TimeslotAnalysisTab />
             </TabPanel>
             <TabPanel value={tabIndex} index={5}>
-                <TimeslotAnalysisTab />
+                <PriceCurveComparisonTab />
             </TabPanel>
         </Box>
     );
