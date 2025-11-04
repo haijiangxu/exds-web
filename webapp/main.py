@@ -14,7 +14,7 @@ from slowapi.util import get_remote_address
 
 from webapp.tools.mongo import DATABASE as db
 from webapp.tools.security import verify_password
-from webapp.api import v1
+from webapp.api import v1, v1_retail_packages
 
 # --- 安全与配置常量 ---
 # !!! 警告: 在生产环境中，密钥应从环境变量或安全配置中加载，绝不能硬编码 !!!
@@ -141,6 +141,7 @@ async def login_for_access_token(request: Request, form_data: OAuth2PasswordRequ
 # 包含 v1 版本的路由
 app.include_router(v1.public_router) # 公开路由，无需认证
 app.include_router(v1.router, dependencies=[Depends(get_current_active_user)]) # 私有路由，需要认证
+app.include_router(v1_retail_packages.router, dependencies=[Depends(get_current_active_user)])
 
 @app.get("/", tags=["Root"], summary="应用根路径")
 def read_root():

@@ -3,6 +3,7 @@ import { LoadAnalysisPage } from '../pages/LoadAnalysisPage';
 import { MarketPriceAnalysisPage } from '../pages/MarketPriceAnalysisPage';
 import PlaceholderPage from '../components/PlaceholderPage';
 import GridAgencyPricePage from '../pages/GridAgencyPricePage';
+import RetailPackagePage from '../pages/RetailPackagePage';
 
 // 路由配置接口
 export interface RouteConfig {
@@ -57,7 +58,7 @@ export const routeConfigs: RouteConfig[] = [
     // 基础数据
     { path: '/basic-data/grid-price', title: '国网代购电价格', component: GridAgencyPricePage },
     { path: '/basic-data/tou-definition', title: '分时电价划分', component: PlaceholderPage },
-    { path: '/basic-data/retail-packages', title: '零售套餐管理', component: PlaceholderPage },
+    { path: '/basic-data/retail-packages', title: '零售套餐管理', component: RetailPackagePage },
     { path: '/basic-data/load-validation', title: '负荷数据校验', component: PlaceholderPage },
 
     // 系统管理

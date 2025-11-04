@@ -21,6 +21,7 @@ import { TabProvider } from './contexts/TabContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { DesktopTabLayout } from './layouts/DesktopTabLayout';
 import { MobileSimpleLayout } from './layouts/MobileSimpleLayout';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // 响应式布局选择组件
 const ResponsiveLayout: React.FC = () => {
@@ -97,30 +98,36 @@ const ResponsiveLayout: React.FC = () => {
     }
 };
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient();
+
 function App() {
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
-            <Router>
-                <AuthProvider>
-                    <Routes>
-                        {/* 登录页面 */}
-                        <Route path="/login" element={<LoginPage />} />
+            <QueryClientProvider client={queryClient}>
+                <Router>
+                    <AuthProvider>
+                        <Routes>
+                            {/* 登录页面 */}
+                            <Route path="/login" element={<LoginPage />} />
 
-                        {/* 受保护的路由 */}
-                        <Route element={<ProtectedRoute />}>
-                            <Route
-                                path="/*"
-                                element={
-                                    <TabProvider>
-                                        <ResponsiveLayout />
-                                    </TabProvider>
-                                }
-                            />
-                        </Route>
-                    </Routes>
-                </AuthProvider>
-            </Router>
+                            {/* 受保护的路由 */}
+                            <Route element={<ProtectedRoute />}>
+                                <Route
+                                    path="/*"
+                                    element={
+                                        <TabProvider>
+                                            <ResponsiveLayout />
+                                        </TabProvider>
+                                    }
+                                />
+                            </Route>
+                        </Routes>
+                    </AuthProvider>
+                </Router>
+            </QueryClientProvider>
         </ThemeProvider>
     );
 }

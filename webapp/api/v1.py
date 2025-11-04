@@ -1,8 +1,7 @@
-
 import os
 import tempfile
 import shutil
-from fastapi import APIRouter, Query, HTTPException, File, UploadFile, Form, Response
+from fastapi import APIRouter, Query, HTTPException, File, UploadFile, Form, Response, Body
 from webapp.tools.mongo import DATABASE
 from typing import List, Dict
 from datetime import datetime, timedelta
@@ -11,8 +10,13 @@ import statistics
 from bson import json_util
 import json
 
+from webapp.api import v1_retail_packages
+from webapp.services.package_service import PackageService
+from webapp.services.pricing_engine import PricingEngine
+
 # 创建一个API路由器
 router = APIRouter(prefix="/api/v1", tags=["v1"])
+router.include_router(v1_retail_packages.router)
 
 # --- 集合定义 ---
 USER_COLLECTION = DATABASE['user_load_data']
@@ -301,6 +305,24 @@ def get_sgcc_prices(page: int = 1, pageSize: int = 10):
         print(f"[DEBUG] Error in get_sgcc_prices: {e}")
         raise HTTPException(status_code=500, detail=f"获取国网代购电价数据时出错: {str(e)}")
 
+@router.post("/retail-packages/calculate-price", summary="计算套餐价格")
+async def calculate_package_price(data: dict = Body(...)):
+    package_id = data.get("package_id")
+    date = data.get("date")
+    time_period = data.get("time_period")
+    volume_mwh = data.get("volume_mwh")
+
+    service = PackageService(DATABASE)
+    package = await service.get_package(package_id)
+    if not package:
+        raise HTTPException(status_code=404, detail="Package not found")
+
+    if package['pricing_mode'] == 'fixed_linked':
+        return PricingEngine.calculate_fixed_linked_price(package, date, time_period, volume_mwh)
+    elif package['pricing_mode'] == 'price_spread':
+        return PricingEngine.calculate_price_spread_price(package, date, time_period, volume_mwh)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid pricing mode")
 
 # --- 公开路由，无需认证 ---
 public_router = APIRouter(prefix="/api/v1", tags=["v1-public"])
