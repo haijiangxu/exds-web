@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Box,
     AppBar,
@@ -8,18 +8,47 @@ import {
     IconButton,
     Tabs,
     Tab,
+    Menu,
+    MenuItem,
+    Divider,
 } from '@mui/material';
 import InsightsIcon from '@mui/icons-material/Insights';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { Sidebar } from '../components/Sidebar';
 import { useTabContext } from '../contexts/TabContext';
+import { useNavigate } from 'react-router-dom';
 
 const drawerWidth = 260;
 
 export const DesktopTabLayout: React.FC = () => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const { openTabs, activeTabKey, setActiveTab, removeTab } = useTabContext();
+    const [currentDateTime, setCurrentDateTime] = useState(new Date());
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const navigate = useNavigate();
+
+    // 实时更新日期时间
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentDateTime(new Date());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    // 格式化日期时间显示
+    const formatDateTime = (date: Date) => {
+        const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const weekday = weekdays[date.getDay()];
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day} ${weekday} ${hours}:${minutes}`;
+    };
 
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
@@ -30,8 +59,22 @@ export const DesktopTabLayout: React.FC = () => {
     };
 
     const handleTabClose = (event: React.MouseEvent, tabKey: string) => {
-        event.stopPropagation(); // 防止触发 Tab 切换
+        event.stopPropagation();
         removeTab(tabKey);
+    };
+
+    const handleAccountMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleAccountMenuClose = () => {
+        setAnchorEl(null);
+    };
+
+    const handleLogout = () => {
+        handleAccountMenuClose();
+        localStorage.removeItem('token');
+        navigate('/login');
     };
 
     return (
@@ -60,6 +103,52 @@ export const DesktopTabLayout: React.FC = () => {
                     <Typography variant="h6" noWrap component="div">
                         电力交易辅助分析系统
                     </Typography>
+
+                    {/* 右侧工具栏（仅桌面端显示） */}
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 3 }}>
+                        {/* 日期时间 */}
+                        <Typography variant="body2" sx={{ color: 'inherit' }}>
+                            {formatDateTime(currentDateTime)}
+                        </Typography>
+
+                        {/* 账号菜单 */}
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                cursor: 'pointer',
+                                '&:hover': {
+                                    opacity: 0.8,
+                                },
+                            }}
+                            onClick={handleAccountMenuOpen}
+                        >
+                            <AccountCircleIcon />
+                            <Typography variant="body2">管理员</Typography>
+                        </Box>
+                    </Box>
+
+                    {/* 账号下拉菜单 */}
+                    <Menu
+                        anchorEl={anchorEl}
+                        open={Boolean(anchorEl)}
+                        onClose={handleAccountMenuClose}
+                        anchorOrigin={{
+                            vertical: 'bottom',
+                            horizontal: 'right',
+                        }}
+                        transformOrigin={{
+                            vertical: 'top',
+                            horizontal: 'right',
+                        }}
+                    >
+                        <MenuItem onClick={handleLogout}>
+                            <LogoutIcon sx={{ mr: 1, fontSize: 20 }} />
+                            退出系统
+                        </MenuItem>
+                    </Menu>
                 </Toolbar>
             </AppBar>
 
