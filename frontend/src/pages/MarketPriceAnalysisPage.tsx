@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Box, Tabs, Tab, Typography, Breadcrumbs, Paper } from '@mui/material';
+import { Box, Tabs, Tab, Typography, Paper } from '@mui/material';
 import { MarketDashboardTab } from '../components/MarketDashboardTab';
 import { DayAheadAnalysisTab } from '../components/DayAheadAnalysisTab'; // 导入新组件
 import { RealTimeAnalysisTab } from '../components/RealTimeAnalysisTab'; // 导入新组件
@@ -41,16 +41,6 @@ export const MarketPriceAnalysisPage: React.FC = () => {
 
     return (
         <Box sx={{ width: '100%' }}>
-            {/* 页面标题 */}
-            <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
-                <Typography sx={{ fontSize: '1.2rem', fontWeight: 600 }}>
-                    分析与预测
-                </Typography>
-                <Typography sx={{ fontSize: '1.2rem', fontWeight: 600 }}>
-                    市场价格分析
-                </Typography>
-            </Breadcrumbs>
-
             <Paper variant="outlined" sx={{ borderColor: 'divider' }}>
                 <Tabs
                     value={tabIndex}
@@ -71,12 +61,12 @@ export const MarketPriceAnalysisPage: React.FC = () => {
                         }
                     }}
                 >
-                    <Tab label="市场价格总览" id="analysis-tab-0" aria-controls="analysis-tabpanel-0" />
-                    <Tab label="日前市场分析" id="analysis-tab-2" aria-controls="analysis-tabpanel-1" />
-                    <Tab label="现货市场复盘" id="analysis-tab-3" aria-controls="analysis-tabpanel-2" />
+                    <Tab label="现货价格总览" id="analysis-tab-0" aria-controls="analysis-tabpanel-0" />
+                    <Tab label="日前现货分析" id="analysis-tab-2" aria-controls="analysis-tabpanel-1" />
+                    <Tab label="实时现货复盘" id="analysis-tab-3" aria-controls="analysis-tabpanel-2" />
                     <Tab label="价差归因分析" id="analysis-tab-4" aria-controls="analysis-tabpanel-3" />
-                    <Tab label="时段价格曲线" id="analysis-tab-5" aria-controls="analysis-tabpanel-4" />
-                    <Tab label="现货价格曲线" id="analysis-tab-1" aria-controls="analysis-tabpanel-5" />
+                    {/* <Tab label="时段价格曲线" id="analysis-tab-5" aria-controls="analysis-tabpanel-4" />
+                    <Tab label="现货价格曲线" id="analysis-tab-1" aria-controls="analysis-tabpanel-5" /> */}
 
                 </Tabs>
             </Paper>
@@ -92,12 +82,12 @@ export const MarketPriceAnalysisPage: React.FC = () => {
             <TabPanel value={tabIndex} index={3}>
                 <SpreadAnalysisTab />
             </TabPanel>
-            <TabPanel value={tabIndex} index={4}>
+            {/* <TabPanel value={tabIndex} index={4}>
                 <TimeslotAnalysisTab />
             </TabPanel>
             <TabPanel value={tabIndex} index={5}>
                 <PriceCurveComparisonTab />
-            </TabPanel>
+            </TabPanel> */}
         </Box>
     );
 };

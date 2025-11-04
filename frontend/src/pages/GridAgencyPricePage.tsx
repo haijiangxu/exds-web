@@ -10,8 +10,7 @@ import {
     Button,
     useMediaQuery,
     Theme,
-    IconButton,
-    Breadcrumbs
+    IconButton
 } from '@mui/material';
 import { SvgIconProps } from '@mui/material/SvgIcon';
 import apiClient from '../api/client';
@@ -393,16 +392,6 @@ const GridAgencyPricePage: React.FC = () => {
 
     return (
         <Box sx={{ width: '100%' }}>
-            {/* 页面标题 */}
-            <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
-                <Typography sx={{ fontSize: '1.2rem', fontWeight: 600 }}>
-                    基础数据
-                </Typography>
-                <Typography sx={{ fontSize: '1.2rem', fontWeight: 600 }}>
-                    国网代购电价格
-                </Typography>
-            </Breadcrumbs>
-
             {renderContent()}
         </Box>
     );

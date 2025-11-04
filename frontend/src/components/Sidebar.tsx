@@ -69,8 +69,8 @@ const menuItems: MenuItem[] = [
         icon: <PeopleIcon />,
         subItems: [
             { text: '客户档案管理', path: '/customer/profiles', icon: <AccountBoxOutlined /> },
-            { text: '零售套餐管理', path: '/customer/retail-packages', icon: <StyleOutlined /> },
-            { text: '客户负荷特性', path: '/customer/load-characteristics', icon: <ShowChartOutlined /> },
+            { text: '零售合同管理', path: '/customer/retail-contracts', icon: <StyleOutlined /> },
+            { text: '客户负荷分析', path: '/customer/load-analysis', icon: <ShowChartOutlined /> },
             { text: '客户聚类分析', path: '/customer/cluster-analysis', icon: <BubbleChartOutlined /> },
         ],
     },
@@ -85,10 +85,19 @@ const menuItems: MenuItem[] = [
         ],
     },
     {
-        text: '价格预测',
+        text: '价格分析',
         icon: <PriceChangeIcon />,
         subItems: [
-            { text: '市场价格分析', path: '/price-forecast/market-analysis', icon: <AnalyticsOutlined /> },
+            { text: '现货价格分析', path: '/price-analysis/spot-market', icon: <AnalyticsOutlined /> },
+            { text: '中长期价格分析', path: '/price-analysis/mid-long-term', icon: <TrendingUpOutlined /> },
+            { text: '价格对比分析', path: '/price-analysis/comparison', icon: <BarChartOutlined /> },
+        ],
+    },
+    {
+        text: '价格预测',
+        icon: <QueryStatsOutlined />,
+        subItems: [
+            { text: '预测基础数据', path: '/price-forecast/baseline-data', icon: <StorageOutlined /> },
             { text: 'D-2价格预测', path: '/price-forecast/d-2', icon: <CrisisAlertOutlined /> },
             { text: '日前价格预测', path: '/price-forecast/day-ahead', icon: <TrendingUpOutlined /> },
             { text: '月度价格预测', path: '/price-forecast/monthly', icon: <CalendarMonthOutlined /> },
@@ -108,7 +117,7 @@ const menuItems: MenuItem[] = [
         text: '风险管理',
         icon: <ShieldIcon />,
         subItems: [
-            { text: '偏差风险监控', path: '/risk-management/deviation', icon: <RuleOutlined /> },
+            { text: '持仓合约管理', path: '/risk-management/position-contracts', icon: <FunctionsOutlined /> },
             { text: '风险敞口分析', path: '/risk-management/exposure', icon: <BarChartOutlined /> },
         ],
     },
@@ -116,8 +125,9 @@ const menuItems: MenuItem[] = [
         text: '结算管理',
         icon: <PaymentIcon />,
         subItems: [
-            { text: '交易预结算', path: '/settlement/pre-settlement', icon: <RequestQuoteOutlined /> },
+            { text: '批发侧预结算', path: '/settlement/wholesale-pre-settlement', icon: <RequestQuoteOutlined /> },
             { text: '平台账单复核', path: '/settlement/bill-review', icon: <FactCheckOutlined /> },
+            { text: '零售用户结算', path: '/settlement/retail-settlement', icon: <PaymentIcon /> },
             { text: '经营利润分析', path: '/settlement/profit-analysis', icon: <ShowChartOutlined /> },
         ],
     },
@@ -127,6 +137,7 @@ const menuItems: MenuItem[] = [
         subItems: [
             { text: '国网代购电价格', path: '/basic-data/grid-price', icon: <PriceChangeIcon /> },
             { text: '分时电价划分', path: '/basic-data/tou-definition', icon: <StyleOutlined /> },
+            { text: '零售套餐管理', path: '/basic-data/retail-packages', icon: <StyleOutlined /> },
             { text: '负荷数据校验', path: '/basic-data/load-validation', icon: <VerifiedUserOutlined /> },
         ],
     },

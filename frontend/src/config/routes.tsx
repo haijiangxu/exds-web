@@ -17,8 +17,8 @@ export const routeConfigs: RouteConfig[] = [
 
     // 客户管理
     { path: '/customer/profiles', title: '客户档案管理', component: PlaceholderPage },
-    { path: '/customer/retail-packages', title: '零售套餐管理', component: PlaceholderPage },
-    { path: '/customer/load-characteristics', title: '客户负荷特性', component: LoadAnalysisPage },
+    { path: '/customer/retail-contracts', title: '零售合同管理', component: PlaceholderPage },
+    { path: '/customer/load-analysis', title: '客户负荷分析', component: LoadAnalysisPage },
     { path: '/customer/cluster-analysis', title: '客户聚类分析', component: PlaceholderPage },
 
     // 负荷预测
@@ -27,8 +27,13 @@ export const routeConfigs: RouteConfig[] = [
     { path: '/load-forecast/accuracy-analysis', title: '预测精度分析', component: PlaceholderPage },
     { path: '/load-forecast/long-term', title: '中长期负荷预测', component: PlaceholderPage },
 
+    // 价格分析
+    { path: '/price-analysis/spot-market', title: '现货价格分析', component: MarketPriceAnalysisPage },
+    { path: '/price-analysis/mid-long-term', title: '中长期价格分析', component: PlaceholderPage },
+    { path: '/price-analysis/comparison', title: '价格对比分析', component: PlaceholderPage },
+
     // 价格预测
-    { path: '/price-forecast/market-analysis', title: '市场价格分析', component: MarketPriceAnalysisPage },
+    { path: '/price-forecast/baseline-data', title: '预测基础数据', component: PlaceholderPage },
     { path: '/price-forecast/d-2', title: 'D-2价格预测', component: PlaceholderPage },
     { path: '/price-forecast/day-ahead', title: '日前价格预测', component: PlaceholderPage },
     { path: '/price-forecast/monthly', title: '月度价格预测', component: PlaceholderPage },
@@ -40,17 +45,19 @@ export const routeConfigs: RouteConfig[] = [
     { path: '/trading-strategy/day-ahead', title: '日前交易策略', component: PlaceholderPage },
 
     // 风险管理
-    { path: '/risk-management/deviation', title: '偏差风险监控', component: PlaceholderPage },
+    { path: '/risk-management/position-contracts', title: '持仓合约管理', component: PlaceholderPage },
     { path: '/risk-management/exposure', title: '风险敞口分析', component: PlaceholderPage },
 
     // 结算管理
-    { path: '/settlement/pre-settlement', title: '交易预结算', component: PlaceholderPage },
+    { path: '/settlement/wholesale-pre-settlement', title: '批发侧预结算', component: PlaceholderPage },
     { path: '/settlement/bill-review', title: '平台账单复核', component: PlaceholderPage },
+    { path: '/settlement/retail-settlement', title: '零售用户结算', component: PlaceholderPage },
     { path: '/settlement/profit-analysis', title: '经营利润分析', component: PlaceholderPage },
 
     // 基础数据
     { path: '/basic-data/grid-price', title: '国网代购电价格', component: GridAgencyPricePage },
     { path: '/basic-data/tou-definition', title: '分时电价划分', component: PlaceholderPage },
+    { path: '/basic-data/retail-packages', title: '零售套餐管理', component: PlaceholderPage },
     { path: '/basic-data/load-validation', title: '负荷数据校验', component: PlaceholderPage },
 
     // 系统管理

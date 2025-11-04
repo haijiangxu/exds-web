@@ -44,8 +44,8 @@ const ResponsiveLayout: React.FC = () => {
 
                     {/* 客户管理 */}
                     <Route path="customer/profiles" element={<PlaceholderPage />} />
-                    <Route path="customer/retail-packages" element={<PlaceholderPage />} />
-                    <Route path="customer/load-characteristics" element={<LoadAnalysisPage />} />
+                    <Route path="customer/retail-contracts" element={<PlaceholderPage />} />
+                    <Route path="customer/load-analysis" element={<LoadAnalysisPage />} />
                     <Route path="customer/cluster-analysis" element={<PlaceholderPage />} />
 
                     {/* 负荷预测 */}
@@ -54,8 +54,13 @@ const ResponsiveLayout: React.FC = () => {
                     <Route path="load-forecast/accuracy-analysis" element={<PlaceholderPage />} />
                     <Route path="load-forecast/long-term" element={<PlaceholderPage />} />
 
+                    {/* 价格分析 */}
+                    <Route path="price-analysis/spot-market" element={<MarketPriceAnalysisPage />} />
+                    <Route path="price-analysis/mid-long-term" element={<PlaceholderPage />} />
+                    <Route path="price-analysis/comparison" element={<PlaceholderPage />} />
+
                     {/* 价格预测 */}
-                    <Route path="price-forecast/market-analysis" element={<MarketPriceAnalysisPage />} />
+                    <Route path="price-forecast/baseline-data" element={<PlaceholderPage />} />
                     <Route path="price-forecast/d-2" element={<PlaceholderPage />} />
                     <Route path="price-forecast/day-ahead" element={<PlaceholderPage />} />
                     <Route path="price-forecast/monthly" element={<PlaceholderPage />} />
@@ -67,17 +72,19 @@ const ResponsiveLayout: React.FC = () => {
                     <Route path="trading-strategy/day-ahead" element={<PlaceholderPage />} />
 
                     {/* 风险管理 */}
-                    <Route path="risk-management/deviation" element={<PlaceholderPage />} />
+                    <Route path="risk-management/position-contracts" element={<PlaceholderPage />} />
                     <Route path="risk-management/exposure" element={<PlaceholderPage />} />
 
                     {/* 结算管理 */}
-                    <Route path="settlement/pre-settlement" element={<PlaceholderPage />} />
+                    <Route path="settlement/wholesale-pre-settlement" element={<PlaceholderPage />} />
                     <Route path="settlement/bill-review" element={<PlaceholderPage />} />
+                    <Route path="settlement/retail-settlement" element={<PlaceholderPage />} />
                     <Route path="settlement/profit-analysis" element={<PlaceholderPage />} />
 
                     {/* 基础数据 */}
                     <Route path="basic-data/grid-price" element={<GridAgencyPricePage />} />
                     <Route path="basic-data/tou-definition" element={<PlaceholderPage />} />
+                    <Route path="basic-data/retail-packages" element={<PlaceholderPage />} />
                     <Route path="basic-data/load-validation" element={<PlaceholderPage />} />
 
                     {/* 系统管理 */}

@@ -6,7 +6,6 @@ import {
     Tabs,
     Tab,
     Paper,
-    Breadcrumbs,
 } from '@mui/material';
 import { ConsumptionTrendTab } from '../components/ConsumptionTrendTab';
 import { MonthlyLoadCurveAnalysisTab } from '../components/MonthlyLoadCurveAnalysisTab';
@@ -47,16 +46,6 @@ export const LoadAnalysisPage: React.FC = () => {
 
     return (
         <Box sx={{ width: '100%' }}>
-            {/* 页面标题 */}
-            <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
-                <Typography sx={{ fontSize: '1.2rem', fontWeight: 600 }}>
-                    分析与预测
-                </Typography>
-                <Typography sx={{ fontSize: '1.2rem', fontWeight: 600 }}>
-                    总体负荷分析
-                </Typography>
-            </Breadcrumbs>
-
             {/* 主内容卡片 */}
             <Paper variant="outlined" sx={{ borderColor: 'divider' }}>
                 <Tabs value={overallActiveTab} onChange={handleOverallTabChange} aria-label="overall load analysis tabs">

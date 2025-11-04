@@ -82,7 +82,7 @@ const FinancialKPIsPanel: React.FC<{ kpis: FinancialKPIs }> = ({ kpis }) => (
     <Paper elevation={2} sx={{ p: 2, height: '100%' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
             <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                核心财务指标
+                财务指标
             </Typography>
             <Typography variant="caption" color="text.secondary">
                 单位: 元/MWh
@@ -155,7 +155,7 @@ const RiskKPIsPanel: React.FC<{ kpis: RiskKPIs }> = ({ kpis }) => (
     <Paper elevation={2} sx={{ p: 2, height: '100%' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
             <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'error.main' }}>
-                核心风险指标
+                风险指标
             </Typography>
             <Typography variant="caption" color="text.secondary">
                 单位: 元/MWh

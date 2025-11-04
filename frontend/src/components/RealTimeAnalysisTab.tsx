@@ -114,7 +114,7 @@ export const RealTimeAnalysisTab: React.FC = () => {
                     <IconButton onClick={() => handleShiftDate(1)}><ArrowRightIcon /></IconButton>
                 </Paper>
 
-                {renderChartContainer(priceVolumeChartRef, isFs1, '现货价格与负荷', FSEnter1(), FSExit1(), FSTitle1(), FSNav1(),
+                {renderChartContainer(priceVolumeChartRef, isFs1, '实时价格与负荷', FSEnter1(), FSExit1(), FSTitle1(), FSNav1(),
                     <ComposedChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="time_str" interval={11} tick={{ fontSize: 12 }} />
@@ -123,8 +123,8 @@ export const RealTimeAnalysisTab: React.FC = () => {
                         <Tooltip content={<CustomTooltip unitMap={{ avg_clearing_price: '元/MWh', total_clearing_power: 'MWh' }} />} />
                         <Legend />
                         {TouPeriodAreas}
-                        <Line yAxisId="left" type="monotone" dataKey="avg_clearing_price" stroke="#f44336" name="现货价格" dot={false} />
-                        <Area yAxisId="right" type="monotone" dataKey="total_clearing_power" fill="#ff9800" stroke="#ff9800" name="现货总电量" />
+                        <Line yAxisId="left" type="monotone" dataKey="avg_clearing_price" stroke="#f44336" name="实时价格" dot={false} />
+                        <Area yAxisId="right" type="monotone" dataKey="total_clearing_power" fill="#ff9800" stroke="#ff9800" name="实时总电量" />
                     </ComposedChart>
                 )}
 
@@ -143,7 +143,7 @@ export const RealTimeAnalysisTab: React.FC = () => {
                     </ComposedChart>
                 )}
 
-                {renderChartContainer(volatilityChartRef, isFs4, '现货价格波动', FSEnter4(), FSExit4(), FSTitle4(), FSNav4(),
+                {renderChartContainer(volatilityChartRef, isFs4, '实时价格波动', FSEnter4(), FSExit4(), FSTitle4(), FSNav4(),
                     <ComposedChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="time_str" interval={11} tick={{ fontSize: 12 }} />
