@@ -264,7 +264,7 @@ const CustomTooltipContent: React.FC<any> = ({ active, payload, label, unit }) =
 
 
 // 价格曲线图组件
-const PriceChart: React.FC<{ data: TimeSeriesPoint[]; onPrevious: () => void; onNext: () => void }> = ({ data, onPrevious, onNext }) => {
+const PriceChart: React.FC<{ data: TimeSeriesPoint[]; dateStr: string; onPrevious: () => void; onNext: () => void }> = ({ data, dateStr, onPrevious, onNext }) => {
     const chartRef = useRef<HTMLDivElement>(null);
 
     // 计算Y轴范围
@@ -273,6 +273,14 @@ const PriceChart: React.FC<{ data: TimeSeriesPoint[]; onPrevious: () => void; on
     const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
 
     const { TouPeriodAreas } = useTouPeriodBackground(data);
+
+    // 全屏功能
+    const { isFullscreen, FullscreenEnterButton, FullscreenExitButton, FullscreenTitle, NavigationButtons } = useChartFullscreen({
+        chartRef,
+        title: `${dateStr} 价格曲线`,
+        onPrevious,
+        onNext
+    });
 
     return (
         <Box sx={{ mt: 2 }}>
@@ -283,8 +291,23 @@ const PriceChart: React.FC<{ data: TimeSeriesPoint[]; onPrevious: () => void; on
                     sx={{
                         height: { xs: 350, sm: 400 },
                         position: 'relative',
+                        backgroundColor: isFullscreen ? 'background.paper' : 'transparent',
+                        p: isFullscreen ? 2 : 0,
+                        ...(isFullscreen && {
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            width: '100vw',
+                            height: '100vh',
+                            zIndex: 1400
+                        })
                     }}
                 >
+                    <FullscreenEnterButton />
+                    <FullscreenExitButton />
+                    <FullscreenTitle />
+                    <NavigationButtons />
+
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                             {TouPeriodAreas}
@@ -331,7 +354,7 @@ const PriceChart: React.FC<{ data: TimeSeriesPoint[]; onPrevious: () => void; on
 };
 
 // 电量曲线图组件
-const VolumeChart: React.FC<{ data: TimeSeriesPoint[]; onPrevious: () => void; onNext: () => void }> = ({ data, onPrevious, onNext }) => {
+const VolumeChart: React.FC<{ data: TimeSeriesPoint[]; dateStr: string; onPrevious: () => void; onNext: () => void }> = ({ data, dateStr, onPrevious, onNext }) => {
     const chartRef = useRef<HTMLDivElement>(null);
 
     // 计算Y轴范围
@@ -340,6 +363,14 @@ const VolumeChart: React.FC<{ data: TimeSeriesPoint[]; onPrevious: () => void; o
     const maxVolume = volumes.length > 0 ? Math.max(...volumes) : 0;
 
     const { TouPeriodAreas } = useTouPeriodBackground(data);
+
+    // 全屏功能
+    const { isFullscreen, FullscreenEnterButton, FullscreenExitButton, FullscreenTitle, NavigationButtons } = useChartFullscreen({
+        chartRef,
+        title: `${dateStr} 负荷曲线`,
+        onPrevious,
+        onNext
+    });
 
     return (
         <Paper variant="outlined" sx={{ mt: 1 }}>
@@ -352,8 +383,23 @@ const VolumeChart: React.FC<{ data: TimeSeriesPoint[]; onPrevious: () => void; o
                     sx={{
                         height: { xs: 350, sm: 400 },
                         position: 'relative',
+                        backgroundColor: isFullscreen ? 'background.paper' : 'transparent',
+                        p: isFullscreen ? 2 : 0,
+                        ...(isFullscreen && {
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            width: '100vw',
+                            height: '100vh',
+                            zIndex: 1400
+                        })
                     }}
                 >
+                    <FullscreenEnterButton />
+                    <FullscreenExitButton />
+                    <FullscreenTitle />
+                    <NavigationButtons />
+
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                             {TouPeriodAreas}
@@ -538,30 +584,12 @@ export const MarketDashboardTab: React.FC = () => {
         setSelectedDate(newDate);
     };
 
-    if (loading) {
-        return (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-                <CircularProgress />
-            </Box>
-        );
-    }
-
-    if (error) {
-        return (
-            <Alert severity="error" sx={{ mt: 2 }}>
-                {error}
-            </Alert>
-        );
-    }
-
-    if (!data) return null;
-
     return (
         <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhCN}>
             <Box>
                 {/* 日期选择器 + 导航器 */}
                 <Paper variant="outlined" sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <IconButton onClick={handlePreviousDay}>
+                    <IconButton onClick={handlePreviousDay} disabled={loading}>
                         <ArrowLeftIcon />
                     </IconButton>
 
@@ -569,6 +597,7 @@ export const MarketDashboardTab: React.FC = () => {
                         label="选择日期"
                         value={selectedDate}
                         onChange={(newDate) => setSelectedDate(newDate)}
+                        disabled={loading}
                         slotProps={{
                             textField: {
                                 sx: { width: { xs: '150px', sm: '200px' } }
@@ -576,41 +605,74 @@ export const MarketDashboardTab: React.FC = () => {
                         }}
                     />
 
-                    <IconButton onClick={handleNextDay}>
+                    <IconButton onClick={handleNextDay} disabled={loading}>
                         <ArrowRightIcon />
                     </IconButton>
                 </Paper>
 
-            <Grid container spacing={{ xs: 1, sm: 2 }} sx={{ mt: 2 }}>
-                {/* 财务指标大卡片 - 桌面端左侧，移动端全宽 */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                    <FinancialKPIsPanel kpis={data.financial_kpis} />
-                </Grid>
+                {/* 首次加载显示完整的 loading */}
+                {loading && !data ? (
+                    <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+                        <CircularProgress />
+                    </Box>
+                ) : error ? (
+                    <Alert severity="error" sx={{ mt: 2 }}>
+                        {error}
+                    </Alert>
+                ) : data ? (
+                    <Box sx={{ position: 'relative' }}>
+                        {/* 数据加载时的覆盖层 */}
+                        {loading && (
+                            <Box
+                                sx={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                                    zIndex: 1000
+                                }}
+                            >
+                                <CircularProgress />
+                            </Box>
+                        )}
 
-                {/* 风险指标大卡片 - 桌面端右侧，移动端全宽 */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                    <RiskKPIsPanel kpis={data.risk_kpis} />
-                </Grid>
+                        <Grid container spacing={{ xs: 1, sm: 2 }} sx={{ mt: 2 }}>
+                            {/* 财务指标大卡片 - 桌面端左侧，移动端全宽 */}
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <FinancialKPIsPanel kpis={data.financial_kpis} />
+                            </Grid>
 
-                {/* 价格曲线图 */}
-                <Grid size={{ xs: 12 }}>
-                    <PriceChart data={data.time_series} onPrevious={handlePreviousDay} onNext={handleNextDay} />
-                </Grid>
+                            {/* 风险指标大卡片 - 桌面端右侧，移动端全宽 */}
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <RiskKPIsPanel kpis={data.risk_kpis} />
+                            </Grid>
 
-                {/* 电量曲线图 */}
-                <Grid size={{ xs: 12 }}>
-                    <VolumeChart data={data.time_series} onPrevious={handlePreviousDay} onNext={handleNextDay} />
-                </Grid>
+                            {/* 价格曲线图 */}
+                            <Grid size={{ xs: 12 }}>
+                                <PriceChart data={data.time_series} dateStr={selectedDate ? format(selectedDate, 'yyyy-MM-dd') : ''} onPrevious={handlePreviousDay} onNext={handleNextDay} />
+                            </Grid>
 
-                {/* 时段汇总表格 */}
-                <Grid size={{ xs: 12 }}>
-                    <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mt: 2 }}>
-                        时段财务速览
-                    </Typography>
-                    <PeriodSummaryTable data={data.period_summary} />
-                </Grid>
-            </Grid>
-        </Box>
+                            {/* 电量曲线图 */}
+                            <Grid size={{ xs: 12 }}>
+                                <VolumeChart data={data.time_series} dateStr={selectedDate ? format(selectedDate, 'yyyy-MM-dd') : ''} onPrevious={handlePreviousDay} onNext={handleNextDay} />
+                            </Grid>
+
+                            {/* 时段汇总表格 */}
+                            <Grid size={{ xs: 12 }}>
+                                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mt: 2 }}>
+                                    时段财务速览
+                                </Typography>
+                                <PeriodSummaryTable data={data.period_summary} />
+                            </Grid>
+                        </Grid>
+                    </Box>
+                ) : null}
+            </Box>
         </LocalizationProvider>
     );
 };
