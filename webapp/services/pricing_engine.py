@@ -1,56 +1,44 @@
-from webapp.tools.package_validator import PackageValidator
+from webapp.models.retail_package import CustomPrices
 
 class PricingEngine:
-    """零售套餐定价计算引擎"""
+    """Retail package pricing calculation engine."""
+
+    STANDARD_RATIOS = {
+        "high_to_flat": 1.6,
+        "valley_to_flat": 0.4,
+        "deep_valley_to_flat": 0.3
+    }
 
     @staticmethod
-    def validate_price_ratio(custom_prices: dict) -> dict:
-        """校验价格比例是否符合463号文"""
-        return PackageValidator.validate_price_ratio(custom_prices)
+    def validate_price_ratio(custom_prices: CustomPrices) -> dict:
+        """Validate if the price ratio complies with regulations."""
+        if custom_prices.flat == 0:
+            return {
+                "compliant": False,
+                "actual_ratios": {},
+                "expected_ratios": PricingEngine.STANDARD_RATIOS,
+                "warnings": ["平段电价不能为0"]
+            }
 
-    @staticmethod
-    async def get_market_price(date: str, time_period: str) -> float:
-        # This is a mock function. In a real scenario, you would fetch this from a database.
-        # For demonstration, returning a fixed value.
-        market_prices = {
-            "peak": 550,
-            "high": 500,
-            "flat": 450,
-            "valley": 400,
-            "deep_valley": 350
+        actual_ratios = {
+            "high_to_flat": round(custom_prices.high / custom_prices.flat, 2),
+            "valley_to_flat": round(custom_prices.valley / custom_prices.flat, 2),
+            "deep_valley_to_flat": round(custom_prices.deep_valley / custom_prices.flat, 2)
         }
-        return market_prices.get(time_period, 450) # Default to flat price
 
-    @staticmethod
-    async def calculate_fixed_linked_price(
-        package_config: dict,
-        date: str,
-        time_period: str,
-        volume_mwh: float
-    ) -> dict:
-        """计算固定+联动模式价格"""
-        # 1. 获取固定价格
-        fixed_price = package_config['fixed_linked_config']['fixed_price']['custom_prices'][time_period]
-
-        # 2. 获取联动价格（从市场数据）
-        linked_ratio = package_config['fixed_linked_config']['linked_price']['ratio']
-        market_price = await PricingEngine.get_market_price(date, time_period)  # 从数据库获取
-        linked_price = market_price * linked_ratio
-
-        # 3. 浮动费用
-        floating_fee = package_config['fixed_linked_config']['floating_fee']
-
-        # 4. 总价
-        total_price = fixed_price + linked_price + floating_fee
+        compliant = all([
+            abs(actual_ratios["high_to_flat"] - PricingEngine.STANDARD_RATIOS["high_to_flat"]) < 0.01,
+            abs(actual_ratios["valley_to_flat"] - PricingEngine.STANDARD_RATIOS["valley_to_flat"]) < 0.01,
+            abs(actual_ratios["deep_valley_to_flat"] - PricingEngine.STANDARD_RATIOS["deep_valley_to_flat"]) < 0.01
+        ])
+        
+        warnings = []
+        if not compliant:
+            warnings.append("当前自定义价格比例不满足463号文要求，结算时将自动调整为标准比例。")
 
         return {
-            "fixed_price": fixed_price,
-            "linked_price": linked_price,
-            "floating_fee": floating_fee,
-            "total_price": total_price,
-            "breakdown": {
-                "fixed_component": fixed_price * volume_mwh,
-                "linked_component": linked_price * volume_mwh,
-                "floating_component": floating_fee * volume_mwh * 1000 # convert MWh to kWh
-            }
+            "compliant": compliant,
+            "actual_ratios": actual_ratios,
+            "expected_ratios": PricingEngine.STANDARD_RATIOS,
+            "warnings": warnings
         }

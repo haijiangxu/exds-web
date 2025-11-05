@@ -1,6 +1,6 @@
 import React from 'react';
 import { Control, Controller, useWatch } from 'react-hook-form';
-import { Switch, FormControlLabel, Grid, Paper, Typography, TextField } from '@mui/material';
+import { Switch, FormControlLabel, Grid, Paper, Typography, TextField, Box, Select, MenuItem, FormControl, InputLabel, FormHelperText } from '@mui/material';
 import { PackageFormData } from '../hooks/usePackageForm';
 
 interface AdditionalTermsCardProps {
@@ -14,7 +14,7 @@ export const AdditionalTermsCard: React.FC<AdditionalTermsCardProps> = ({ contro
 
   return (
     <Grid container spacing={2}>
-      <Grid item xs={12} md={6}>
+      <Grid size={{ xs: 12, md: 6 }}>
         <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
           <FormControlLabel
             control={
@@ -39,11 +39,14 @@ export const AdditionalTermsCard: React.FC<AdditionalTermsCardProps> = ({ contro
                 control={control}
                 render={({ field }) => <TextField {...field} type="number" label="偏差补偿比例 (%)" fullWidth margin="dense" />}
               />
+              <FormHelperText sx={{ mt: 1 }}>
+                “双方用电量与约定电量偏差时，将按此比例进行补偿”。
+              </FormHelperText>
             </Box>
           )}
         </Paper>
       </Grid>
-      <Grid item xs={12} md={6}>
+      <Grid size={{ xs: 12, md: 6 }}>
         <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
           <FormControlLabel
             control={
@@ -57,6 +60,20 @@ export const AdditionalTermsCard: React.FC<AdditionalTermsCardProps> = ({ contro
           />
           {priceCapEnabled && (
             <Box sx={{ mt: 2 }}>
+                <FormControl fullWidth margin="dense">
+                    <InputLabel>参考价格标的</InputLabel>
+                    <Controller
+                        name="additional_terms.price_cap.reference_target"
+                        control={control}
+                        defaultValue="grid_agency_monthly_avg"
+                        render={({ field }) => (
+                            <Select {...field} label="参考价格标的">
+                                <MenuItem value="grid_agency_monthly_avg">电网代理购电发布的电力市场当月平均上网电价</MenuItem>
+                                {/* Add other options if available */}
+                            </Select>
+                        )}
+                    />
+                </FormControl>
               <Controller
                 name="additional_terms.price_cap.non_peak_markup"
                 control={control}
@@ -67,6 +84,9 @@ export const AdditionalTermsCard: React.FC<AdditionalTermsCardProps> = ({ contro
                 control={control}
                 render={({ field }) => <TextField {...field} type="number" label="尖峰月份上浮 (%)" fullWidth margin="dense" />}
               />
+              <FormHelperText sx={{ mt: 1 }}>
+                “结算时，若套餐结算价高于封顶价，将按封顶价结算”。
+              </FormHelperText>
             </Box>
           )}
         </Paper>

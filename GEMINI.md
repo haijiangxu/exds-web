@@ -1,6 +1,5 @@
 # Gemini 项目背景: exds-web
 
-
 ## 项目概述
 
 "电力交易辅助决策系统"是一个用于电力负荷数据可视化与分析的Web应用，旨在为用户提供直观、高效的电力负荷数据分析工具，并为未来扩展负荷预测、交易策略和电费结算等功能奠定基础。
@@ -41,6 +40,15 @@ npm test --prefix frontend
 
 前端开发服务器运行在 `http://localhost:3000`，已配置代理，所有 `/api` 请求会转发到后端 `http://127.0.0.1:8005`。
 
+## 前端开发工作流
+
+**重要**：在开始前端开发任务时，应首先在后台启动开发服务器，并将日志输出到指定文件，以便自主诊断编译错误：
+
+```bash
+npm start --prefix frontend > ~\.gemini\tmp\frontend_dev.log 2>&1 &
+```
+
+当遇到编译错误时，首要行动是读取 `frontend_dev.log` 文件内容以获取详细错误信息，然后进行修复。
 
 ## 代码架构
 
@@ -201,103 +209,6 @@ return (
 **位置**：`frontend/src/hooks/useSelectableSeries.tsx`
 
 **使用方法**：参考 `docs/技术方案与编码规范.md` 中 `3.8.2. useSelectableSeries` 的详细说明（如果存在）。
-
-### 3.5. Loading 状态管理规范（重要）
-
-**问题背景**：
-在使用 `useChartFullscreen` Hook 实现图表全屏功能时，如果在 loading 状态变化时卸载图表组件，会导致全屏状态丢失。这是因为全屏 API 绑定在 DOM 元素上，组件卸载后全屏状态会自动退出。
-
-**核心原则**：**避免在数据加载时卸载包含全屏功能的组件**
-
-**错误示例** ❌：
-```tsx
-// 错误：loading 时卸载整个组件
-if (loading) {
-    return <CircularProgress />;
-}
-
-return (
-    <Box ref={chartRef}>
-        <FullscreenEnterButton />
-        <ResponsiveContainer>
-            <LineChart data={data} />
-        </ResponsiveContainer>
-    </Box>
-);
-```
-
-**正确示例** ✅：
-```tsx
-// 正确：区分首次加载和数据刷新
-return (
-    <Box>
-        {/* 首次加载（无数据时）：显示完整 loading */}
-        {loading && !data ? (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-                <CircularProgress />
-            </Box>
-        ) : error ? (
-            <Alert severity="error">{error}</Alert>
-        ) : data ? (
-            <Box sx={{ position: 'relative' }}>
-                {/* 数据刷新时的覆盖层（不卸载组件） */}
-                {loading && (
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                            zIndex: 1000
-                        }}
-                    >
-                        <CircularProgress />
-                    </Box>
-                )}
-
-                {/* 图表组件 - 在 loading 时不会被卸载 */}
-                <Box ref={chartRef}>
-                    <FullscreenEnterButton />
-                    <FullscreenExitButton />
-                    <ResponsiveContainer>
-                        <LineChart data={data} />
-                    </ResponsiveContainer>
-                </Box>
-            </Box>
-        ) : null}
-    </Box>
-);
-```
-
-**配套措施**：
-```tsx
-// 禁用导航控件，防止 loading 时重复触发
-<IconButton onClick={handlePrevious} disabled={loading}>
-    <ArrowLeftIcon />
-</IconButton>
-
-<DatePicker
-    value={selectedDate}
-    onChange={setSelectedDate}
-    disabled={loading}
-/>
-
-<IconButton onClick={handleNext} disabled={loading}>
-    <ArrowRightIcon />
-</IconButton>
-```
-
-**开发检查清单**：
-- [ ] 区分首次加载（`loading && !data`）和数据刷新（`loading && data`）
-- [ ] 数据刷新时使用覆盖层而不是卸载组件
-- [ ] Loading 时禁用导航按钮和日期选择器
-- [ ] 覆盖层的 `zIndex` 低于全屏按钮（1000 < 1400）
-- [ ] 测试全屏状态下切换日期不会退出全屏
 
 ### 4. 移动端响应式设计规范
 
@@ -487,19 +398,11 @@ return (
 - [ ] 实现自动加载（监听 `selectedDate` 变化）
 - [ ] Paper 容器使用 `p: 2, gap: 1, flexWrap: 'wrap'`
 - [ ] LocalizationProvider 包裹整个组件
-- [ ] Loading 时禁用导航按钮和日期选择器（`disabled={loading}`）
 
 **图表容器**
 - [ ] 图表高度为 `{ xs: 350, sm: 400 }`
 - [ ] 使用 `useChartFullscreen` Hook
 - [ ] 使用 `ResponsiveContainer`
-
-**Loading 状态管理（关键）**
-- [ ] 区分首次加载（`loading && !data`）和数据刷新（`loading && data`）
-- [ ] 数据刷新时使用覆盖层而不是卸载组件
-- [ ] Loading 时禁用导航按钮和日期选择器
-- [ ] 覆盖层的 `zIndex` 为 1000（低于全屏按钮的 1400）
-- [ ] **测试全屏状态下切换日期不会退出全屏**
 
 **Grid 布局**
 - [ ] 间距使用 `spacing={{ xs: 1, sm: 2 }}`
@@ -528,14 +431,13 @@ return (
 **核心结构**：
 ```tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, CircularProgress, Typography, Paper, IconButton, Grid, Alert } from '@mui/material';
+import { Box, CircularProgress, Typography, Paper, IconButton, Grid } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { zhCN } from 'date-fns/locale';
 import ArrowLeftIcon from '@mui/icons-material/ArrowLeft';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import { format, addDays } from 'date-fns';
-import { ResponsiveContainer } from 'recharts';
 import apiClient from '../api/client';
 import { useChartFullscreen } from '../hooks/useChartFullscreen';
 // 根据需要导入其他 Hooks
@@ -543,7 +445,6 @@ import { useChartFullscreen } from '../hooks/useChartFullscreen';
 export const MyNewTab: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<Date | null>(addDays(new Date(), -1));
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [data, setData] = useState<any[]>([]);
 
     const chartRef = useRef<HTMLDivElement>(null);
@@ -562,13 +463,11 @@ export const MyNewTab: React.FC = () => {
     const fetchData = (date: Date | null) => {
         if (!date) return;
         setLoading(true);
-        setError(null);
         const formattedDate = format(date, 'yyyy-MM-dd');
         apiClient.get(`/api/v1/your-endpoint?date=${formattedDate}`)
             .then(response => setData(response.data))
             .catch(error => {
                 console.error('Error:', error);
-                setError(error.response?.data?.detail || error.message || '加载数据失败');
                 setData([]);
             })
             .finally(() => setLoading(false));
@@ -591,89 +490,54 @@ export const MyNewTab: React.FC = () => {
             <Box>
                 {/* 日期选择器 */}
                 <Paper variant="outlined" sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <IconButton onClick={() => handleShiftDate(-1)} disabled={loading}><ArrowLeftIcon /></IconButton>
+                    <IconButton onClick={() => handleShiftDate(-1)}><ArrowLeftIcon /></IconButton>
                     <DatePicker
                         label="选择日期"
                         value={selectedDate}
                         onChange={(date) => setSelectedDate(date)}
-                        disabled={loading}
                         slotProps={{ textField: { sx: { width: { xs: '150px', sm: '200px' } } } }}
                     />
-                    <IconButton onClick={() => handleShiftDate(1)} disabled={loading}><ArrowRightIcon /></IconButton>
+                    <IconButton onClick={() => handleShiftDate(1)}><ArrowRightIcon /></IconButton>
                 </Paper>
 
-                {/* 首次加载显示完整的 loading */}
-                {loading && !data ? (
-                    <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-                        <CircularProgress />
-                    </Box>
-                ) : error ? (
-                    <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
-                ) : data ? (
-                    <Box sx={{ position: 'relative' }}>
-                        {/* 数据加载时的覆盖层（不卸载组件） */}
-                        {loading && (
-                            <Box
-                                sx={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    right: 0,
-                                    bottom: 0,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                                    zIndex: 1000
-                                }}
-                            >
+                {/* 图表容器 */}
+                <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
+                    <Typography variant="h6" gutterBottom>图表标题</Typography>
+                    <Box
+                        ref={chartRef}
+                        sx={{
+                            height: { xs: 350, sm: 400 },
+                            position: 'relative',
+                            backgroundColor: isFullscreen ? 'background.paper' : 'transparent',
+                            p: isFullscreen ? 2 : 0,
+                            ...(isFullscreen && { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1400 })
+                        }}
+                    >
+                        <FullscreenEnterButton />
+                        <FullscreenExitButton />
+                        <FullscreenTitle />
+                        <NavigationButtons />
+
+                        {loading ? (
+                            <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
                                 <CircularProgress />
                             </Box>
-                        )}
-
-                        {/* 图表容器 */}
-                        <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
-                            <Typography variant="h6" gutterBottom>图表标题</Typography>
-                            <Box
-                                ref={chartRef}
-                                sx={{
-                                    height: { xs: 350, sm: 400 },
-                                    position: 'relative',
-                                    backgroundColor: isFullscreen ? 'background.paper' : 'transparent',
-                                    p: isFullscreen ? 2 : 0,
-                                    ...(isFullscreen && { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1400 })
-                                }}
-                            >
-                                <FullscreenEnterButton />
-                                <FullscreenExitButton />
-                                <FullscreenTitle />
-                                <NavigationButtons />
-
-                                {!data || data.length === 0 ? (
-                                    <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-                                        <Typography>无数据</Typography>
-                                    </Box>
-                                ) : (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        {/* Recharts 图表 */}
-                                    </ResponsiveContainer>
-                                )}
+                        ) : !data || data.length === 0 ? (
+                            <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                                <Typography>无数据</Typography>
                             </Box>
-                        </Paper>
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                {/* Recharts 图表 */}
+                            </ResponsiveContainer>
+                        )}
                     </Box>
-                ) : null}
+                </Paper>
             </Box>
         </LocalizationProvider>
     );
 };
 ```
-
-**模板关键改进**：
-- ✅ 区分首次加载（`loading && !data`）和数据刷新（`loading && data`）
-- ✅ 数据刷新时使用覆盖层，不卸载图表组件，保持全屏状态
-- ✅ Loading 时禁用导航按钮和日期选择器
-- ✅ 覆盖层 zIndex=1000 低于全屏按钮 zIndex=1400
-- ✅ 添加 error 状态处理
 
 
 

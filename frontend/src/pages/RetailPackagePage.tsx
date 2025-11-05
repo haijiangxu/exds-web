@@ -6,7 +6,7 @@ import { PackageListView } from '../components/PackageListView';
 const RetailPackagePage: React.FC = () => {
   return (
     <Box>
-      <PageHeader title="零售套餐管理" />
+      <PageHeader title="零售套餐管理" breadcrumbs={[{ label: '基础数据' }, { label: '零售套餐管理' }]} />
       <PackageListView />
     </Box>
   );

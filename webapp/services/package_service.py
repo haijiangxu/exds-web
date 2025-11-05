@@ -1,22 +1,41 @@
-from webapp.tools.mongo import DATABASE
 from bson import ObjectId
+from webapp.tools.mongo import DATABASE
+from webapp.models.retail_package import RetailPackage, RetailPackageListItem
+from datetime import datetime
 
 class PackageService:
+    """
+    Service layer for retail package management.
+    Handles business logic for creating, retrieving,updating, and deleting packages.
+    """
     def __init__(self, db):
         self.db = db
-        self.collection = self.db.get_collection("retail_packages")
+        self.collection = self.db.retail_packages
 
-    async def create_package(self, package_data: dict, status: str, operator: str) -> dict:
-        package_data["status"] = status
-        package_data["created_by"] = operator
-        package_data["created_at"] = datetime.utcnow()
-        package_data["updated_at"] = datetime.utcnow()
+    def create_package(self, package_data: dict, operator: str, status: str = "draft") -> dict:
+        """
+        Creates a new retail package.
+        """
+        package = RetailPackage(**package_data)
+        package.created_by = operator
+        package.updated_by = operator
+        package.status = status
+        
+        # TODO: Add validation logic from pricing_engine
+        
+        insert_result = self.collection.insert_one(package.dict(by_alias=True))
+        
+        return {
+            "id": str(insert_result.inserted_id),
+            "status": package.status,
+            "validation": package.validation.dict(),
+            "created_at": package.created_at.isoformat()
+        }
 
-        # This is a simplified version. In a real scenario, you would handle DB exceptions.
-        result = await self.collection.insert_one(package_data)
-        return {"id": str(result.inserted_id), "status": status}
-
-    async def list_packages(self, filters: dict, page: int, page_size: int) -> dict:
+    def list_packages(self, filters: dict, page: int, page_size: int) -> dict:
+        """
+        Retrieves a paginated list of retail packages.
+        """
         query = {}
         if filters.get("keyword"):
             query["package_name"] = {"$regex": filters["keyword"], "$options": "i"}
@@ -25,27 +44,47 @@ class PackageService:
         if filters.get("status"):
             query["status"] = filters["status"]
 
-        total = await self.collection.count_documents(query)
-        items = await self.collection.find(query).skip((page - 1) * page_size).limit(page_size).to_list(length=page_size)
+        total = self.collection.count_documents(query)
         
-        # Convert ObjectId to string for JSON serialization
-        for item in items:
-            item["_id"] = str(item["_id"])
+        cursor = self.collection.find(query).skip((page - 1) * page_size).limit(page_size)
+        
+        items = []
+        for doc in cursor:
+            # Use the list item model for lighter payload
+            list_item = RetailPackageListItem(**doc)
+            items.append(list_item.dict())
 
-        return {"items": items, "total": total, "page": page, "page_size": page_size}
+        return {
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "items": items
+        }
 
-    async def change_status(self, package_id: str, new_status: str, operator: str) -> dict:
-        update_data = {
-            "$set": {
-                "status": new_status,
-                "updated_at": datetime.utcnow(),
-                "updated_by": operator
-            }
+    def change_status(self, package_id: str, new_status: str, operator: str) -> dict:
+        """
+        Changes the status of a package (e.g., activate, archive).
+        """
+        update_fields = {
+            "status": new_status,
+            "updated_by": operator,
+            "updated_at": datetime.utcnow()
         }
         if new_status == "active":
-            update_data["$set"]["activated_at"] = datetime.utcnow()
+            update_fields["activated_at"] = datetime.utcnow()
         elif new_status == "archived":
-            update_data["$set"]["archived_at"] = datetime.utcnow()
+            update_fields["archived_at"] = datetime.utcnow()
 
-        await self.collection.update_one({"_id": ObjectId(package_id)}, update_data)
-        return {"id": package_id, "status": new_status}
+        result = self.collection.update_one(
+            {"_id": ObjectId(package_id)},
+            {"$set": update_fields}
+        )
+
+        if result.matched_count == 0:
+            return {"error": "Package not found"}
+
+        return {
+            "id": package_id,
+            "status": new_status,
+            f"{new_status}_at": update_fields.get(f"{new_status}_at", datetime.utcnow()).isoformat()
+        }

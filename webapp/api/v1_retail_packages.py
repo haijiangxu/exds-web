@@ -1,58 +1,40 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from typing import Optional
 
-# Assuming the models and services will be created
-# from webapp.models.retail_package import RetailPackage
-# from webapp.services.package_service import PackageService
-# from webapp.tools.mongo import DATABASE
-# from webapp.tools.security import get_current_active_user
+from webapp.models.retail_package import RetailPackage, PackageListResponse, CustomPrices
+from webapp.services.package_service import PackageService
+from webapp.services.pricing_engine import PricingEngine
+from webapp.tools.mongo import DATABASE
+# Corrected import path for the user dependency
+from webapp.tools.security import get_current_active_user, User
 
-router = APIRouter(prefix="/api/v1/retail-packages", tags=["retail_packages"])
-
-# Mock functions and classes to allow for file creation
-class RetailPackage:
-    pass
-
-class PackageService:
-    def __init__(self, db):
-        pass
-    async def create_package(self, package_data, status, operator):
-        return {"id": "new_id", "status": status}
-    async def list_packages(self, filters, page, page_size):
-        return {"items": [], "total": 0}
-    async def change_status(self, package_id, new_status, operator):
-        return {"id": package_id, "status": new_status}
-
-def get_current_active_user():
-    return {"username": "testuser"}
-
-DATABASE = None
+router = APIRouter(prefix="/api/v1/retail-packages", tags=["Retail Packages"])
 
 @router.post("", response_model=dict)
 async def create_package(
-    package: RetailPackage, # This will be the pydantic model
+    package: RetailPackage,
     save_as_draft: bool = True,
-    current_user: dict = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user)
 ):
-    """创建新套餐"""
+    """Create a new retail package."""
     service = PackageService(DATABASE)
-    # The package data will come from the request
     result = await service.create_package(
-        package_data={},
+        package_data=package.dict(exclude_unset=True),
         status="draft" if save_as_draft else "active",
-        operator=current_user["username"]
+        operator=current_user.username
     )
     return result
 
-@router.get("", response_model=dict)
+@router.get("", response_model=PackageListResponse)
 async def list_packages(
     keyword: Optional[str] = None,
     package_type: Optional[str] = None,
     status: Optional[str] = None,
     page: int = 1,
-    page_size: int = 20
+    page_size: int = 20,
+    current_user: User = Depends(get_current_active_user)
 ):
-    """获取套餐列表"""
+    """Get a list of retail packages."""
     service = PackageService(DATABASE)
     result = await service.list_packages(
         filters={
@@ -65,16 +47,44 @@ async def list_packages(
     )
     return result
 
-@router.post("/{package_id}/activate")
+@router.post("/{package_id}/activate", response_model=dict)
 async def activate_package(
     package_id: str,
-    current_user: dict = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user)
 ):
-    """激活套餐"""
+    """Activate a retail package."""
     service = PackageService(DATABASE)
     result = await service.change_status(
         package_id=package_id,
         new_status="active",
-        operator=current_user["username"]
+        operator=current_user.username
     )
+    if "error" in result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
+    return result
+
+@router.post("/{package_id}/archive", response_model=dict)
+async def archive_package(
+    package_id: str,
+    current_user: User = Depends(get_current_active_user)
+):
+    """Archive a retail package."""
+    service = PackageService(DATABASE)
+    result = await service.change_status(
+        package_id=package_id,
+        new_status="archived",
+        operator=current_user.username
+    )
+    if "error" in result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
+    return result
+
+@router.post("/validate-price-ratio", response_model=dict)
+async def validate_price_ratio(
+    custom_prices: CustomPrices,
+    current_user: User = Depends(get_current_active_user)
+):
+    """Validate custom price ratios."""
+    engine = PricingEngine()
+    result = engine.validate_price_ratio(custom_prices)
     return result

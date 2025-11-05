@@ -3,6 +3,7 @@ import { Control, Controller, useWatch } from 'react-hook-form';
 import { RadioGroup, FormControlLabel, Radio, FormControl, FormLabel, Grid } from '@mui/material';
 import { PackageFormData } from '../hooks/usePackageForm';
 import { FixedLinkedForm } from './FixedLinkedForm';
+import { PriceSpreadForm } from './PriceSpreadForm'; // Import PriceSpreadForm
 
 interface PricingModeCardProps {
   control: Control<PackageFormData>;
@@ -13,7 +14,7 @@ export const PricingModeCard: React.FC<PricingModeCardProps> = ({ control }) => 
 
   return (
     <Grid container spacing={2}>
-      <Grid item xs={12}>
+      <Grid size={{ xs: 12 }}>
         <FormControl component="fieldset">
           <FormLabel component="legend">选择定价模式</FormLabel>
           <Controller
@@ -30,15 +31,14 @@ export const PricingModeCard: React.FC<PricingModeCardProps> = ({ control }) => 
       </Grid>
 
       {pricingMode === 'fixed_linked' && (
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <FixedLinkedForm control={control} />
         </Grid>
       )}
 
       {pricingMode === 'price_spread' && (
-        <Grid item xs={12}>
-          {/* Placeholder for PriceSpreadForm */}
-          <p>价差分成表单</p>
+        <Grid size={{ xs: 12 }}>
+          <PriceSpreadForm control={control} /> {/* Integrate PriceSpreadForm */}
         </Grid>
       )}
     </Grid>

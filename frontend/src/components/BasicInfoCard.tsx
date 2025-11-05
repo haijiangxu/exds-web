@@ -10,7 +10,7 @@ interface BasicInfoCardProps {
 export const BasicInfoCard: React.FC<BasicInfoCardProps> = ({ control }) => {
   return (
     <Grid container spacing={2}>
-      <Grid item xs={12}>
+      <Grid size={{ xs: 12 }}>
         <Controller
           name="package_name"
           control={control}
@@ -25,7 +25,7 @@ export const BasicInfoCard: React.FC<BasicInfoCardProps> = ({ control }) => {
           )}
         />
       </Grid>
-      <Grid item xs={12}>
+      <Grid size={{ xs: 12 }}>
         <FormControl component="fieldset">
           <FormLabel component="legend">套餐类型</FormLabel>
           <Controller
