@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, CircularProgress, 
-  useMediaQuery, useTheme, Paper, Typography, Grid, TextField, FormControl, 
-  FormLabel, RadioGroup, FormControlLabel, Radio, InputLabel, Select, 
-  MenuItem, Switch, FormHelperText 
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, CircularProgress,
+  useMediaQuery, useTheme, Paper, Typography, Grid, TextField, FormControl,
+  FormLabel, RadioGroup, FormControlLabel, Radio, InputLabel, Select,
+  MenuItem, Switch, FormHelperText, Alert
 } from '@mui/material';
 import { usePackageForm, PackageFormData } from '../hooks/usePackageForm';
 import { Control, Controller } from 'react-hook-form';
@@ -22,8 +22,9 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
   open, packageId, mode, onClose, onSave
 }) => {
 
-  const { control, handleSubmit, watch, reset } = usePackageForm();
+  const { control, handleSubmit, watch, reset, setError, clearErrors, formState: { errors } } = usePackageForm();
   const [loadingPackageData, setLoadingPackageData] = useState(false); // New state for loading
+  const [saving, setSaving] = useState(false); // 新增：保存状态
 
   useEffect(() => {
     if (open) {
@@ -61,11 +62,19 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
           <Controller
             name="package_name"
             control={control}
-            render={({ field }) => (
+            rules={{ required: '套餐名称不能为空' }}
+            render={({ field, fieldState: { error } }) => (
               <TextField
                 {...field}
                 label="套餐名称"
                 fullWidth
+                required
+                error={!!error}
+                helperText={error?.message}
+                onChange={(e) => {
+                  field.onChange(e);
+                  clearErrors('package_name'); // 输入时清除错误
+                }}
               />
             )}
           />
@@ -93,6 +102,39 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
     const pricingMode = watch('pricing_mode');
     const packageType = watch('package_type');
     const fixedPricingMethod = watch('fixed_linked_config.fixed_price.pricing_method');
+
+    // 监听自定义价格变化
+    const customPrices = watch('fixed_linked_config.fixed_price.custom_prices');
+
+    // 计算价格比例并判断是否符合标准
+    const calculateRatioCompliance = () => {
+      if (!customPrices || !customPrices.flat || customPrices.flat === 0) {
+        return { compliant: true, ratios: null };
+      }
+
+      const ratios = {
+        high_to_flat: customPrices.high / customPrices.flat,
+        valley_to_flat: customPrices.valley / customPrices.flat,
+        deep_valley_to_flat: customPrices.deep_valley / customPrices.flat,
+      };
+
+      // 标准比例：1.6:1:0.4:0.3
+      const STANDARD_RATIOS = {
+        high_to_flat: 1.6,
+        valley_to_flat: 0.4,
+        deep_valley_to_flat: 0.3,
+      };
+
+      // 判断是否符合（允许0.01的误差）
+      const compliant =
+        Math.abs(ratios.high_to_flat - STANDARD_RATIOS.high_to_flat) < 0.01 &&
+        Math.abs(ratios.valley_to_flat - STANDARD_RATIOS.valley_to_flat) < 0.01 &&
+        Math.abs(ratios.deep_valley_to_flat - STANDARD_RATIOS.deep_valley_to_flat) < 0.01;
+
+      return { compliant, ratios };
+    };
+
+    const { compliant, ratios } = calculateRatioCompliance();
 
     return (
       <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
@@ -177,6 +219,21 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
                                         render={({ field }) => <TextField {...field} type="number" label="深谷时段价格" fullWidth variant="standard" />}
                                         />
                                     </Grid>
+
+                                    {/* 价格比例警告 */}
+                                    {ratios && !compliant && (
+                                      <Grid size={{ xs: 12 }}>
+                                        <Alert severity="warning" sx={{ mt: 2 }}>
+                                          当前自定义价格比例不满足463号文要求，结算时将自动调整为标准比例 (1.6:1:0.4:0.3)。
+                                          <br />
+                                          <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
+                                            当前比例：峰/平={ratios.high_to_flat.toFixed(2)}，
+                                            谷/平={ratios.valley_to_flat.toFixed(2)}，
+                                            深谷/平={ratios.deep_valley_to_flat.toFixed(2)}
+                                          </Typography>
+                                        </Alert>
+                                      </Grid>
+                                    )}
                                 </>
                             )}
                             {/* Reference pricing method for fixed price */}
@@ -471,6 +528,30 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const packageType = watch('package_type'); // Watch package_type for conditional rendering in AdditionalTerms
 
+  // 保存处理函数
+  const handleSaveClick = async (asDraft: boolean) => {
+    handleSubmit(async (data: PackageFormData) => {
+      setSaving(true);
+      clearErrors(); // 清除之前的错误
+
+      try {
+        await onSave(data, asDraft);
+        // onSave成功后会关闭对话框
+      } catch (error: any) {
+        // 处理409冲突错误
+        if (error.response?.status === 409) {
+          setError('package_name', {
+            type: 'manual',
+            message: '套餐名称已存在，请使用其他名称'
+          });
+        }
+        // 其他错误在父组件处理
+      } finally {
+        setSaving(false);
+      }
+    })();
+  };
+
   return (
     <Dialog open={open} onClose={onClose} fullScreen={isMobile} maxWidth="md" fullWidth>
       <DialogTitle>
@@ -492,20 +573,20 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose} disabled={loadingPackageData}>取消</Button>
+        <Button onClick={onClose} disabled={loadingPackageData || saving}>取消</Button>
         <Button
           variant="outlined"
-          onClick={handleSubmit((data: PackageFormData) => onSave(data, true))}
-          disabled={loadingPackageData}
+          onClick={() => handleSaveClick(true)}
+          disabled={loadingPackageData || saving}
         >
-          保存为草稿
+          {saving ? '保存中...' : '保存为草稿'}
         </Button>
         <Button
           variant="contained"
-          onClick={handleSubmit((data: PackageFormData) => onSave(data, false))}
-          disabled={loadingPackageData}
+          onClick={() => handleSaveClick(false)}
+          disabled={loadingPackageData || saving}
         >
-          保存并生效
+          {saving ? '保存中...' : '保存并生效'}
         </Button>
       </DialogActions>
     </Dialog>

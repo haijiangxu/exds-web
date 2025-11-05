@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npm search:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(python scripts/test_serialization2.py:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

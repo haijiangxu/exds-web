@@ -1,6 +1,7 @@
 from bson import ObjectId
+from pymongo.errors import DuplicateKeyError
 from webapp.tools.mongo import DATABASE
-from webapp.models.retail_package import RetailPackage, RetailPackageListItem
+from webapp.models.retail_package import RetailPackage, RetailPackageListItem, ValidationResult
 from datetime import datetime
 
 class PackageService:
@@ -8,27 +9,59 @@ class PackageService:
     Service layer for retail package management.
     Handles business logic for creating, retrieving,updating, and deleting packages.
     """
+
+    # 状态转换矩阵
+    STATE_TRANSITIONS = {
+        "draft": ["active"],           # 草稿可以激活
+        "active": ["archived"],        # 生效可以归档
+        "archived": []                 # 归档不能转换到其他状态
+    }
+
     def __init__(self, db):
         self.db = db
         self.collection = self.db.retail_packages
 
     def create_package(self, package_data: dict, operator: str, status: str = "draft") -> dict:
         """
-        Creates a new retail package.
+        创建新的零售套餐
+
+        Args:
+            package_data: 套餐数据
+            operator: 操作人
+            status: 状态（draft 或 active）
+
+        Returns:
+            创建的套餐信息
+
+        Raises:
+            ValueError: 套餐名称已存在
         """
         package = RetailPackage(**package_data)
         package.created_by = operator
         package.updated_by = operator
         package.status = status
-        
-        # TODO: Add validation logic from pricing_engine
-        
-        insert_result = self.collection.insert_one(package.dict(by_alias=True))
-        
+
+        # 价格比例校验（如果是固定+联动模式且使用自定义价格）
+        if (package.pricing_mode == "fixed_linked" and
+            package.fixed_linked_config and
+            package.fixed_linked_config.fixed_price.pricing_method == "custom"):
+
+            custom_prices = package.fixed_linked_config.fixed_price.custom_prices
+            if custom_prices:
+                from webapp.services.pricing_engine import PricingEngine
+                validation_result = PricingEngine.validate_price_ratio(custom_prices)
+                package.validation = ValidationResult(**validation_result)
+
+        # 尝试插入，捕获名称重复错误
+        try:
+            insert_result = self.collection.insert_one(package.dict(by_alias=True))
+        except DuplicateKeyError:
+            raise ValueError(f"套餐名称已存在: {package.package_name}")
+
         return {
             "id": str(insert_result.inserted_id),
             "status": package.status,
-            "validation": package.validation.dict(),
+            "validation": package.validation.dict() if package.validation else None,
             "created_at": package.created_at.isoformat()
         }
 
@@ -50,9 +83,27 @@ class PackageService:
         
         items = []
         for doc in cursor:
+            # 计算派生字段
+            additional_terms = doc.get("additional_terms", {})
+            has_green_power = additional_terms.get("green_power", {}).get("enabled", False)
+            has_price_cap = additional_terms.get("price_cap", {}).get("enabled", False)
+
+            # 构建列表项数据
+            list_item_data = {
+                "_id": doc["_id"],
+                "package_name": doc.get("package_name"),
+                "package_type": doc.get("package_type"),
+                "pricing_mode": doc.get("pricing_mode"),
+                "has_green_power": has_green_power,
+                "has_price_cap": has_price_cap,
+                "status": doc.get("status"),
+                "created_at": doc.get("created_at"),
+                "updated_at": doc.get("updated_at")
+            }
+
             # Use the list item model for lighter payload
-            list_item = RetailPackageListItem(**doc)
-            items.append(list_item.dict())
+            list_item = RetailPackageListItem(**list_item_data)
+            items.append(list_item.dict(by_alias=True))
 
         return {
             "total": total,
@@ -63,28 +114,254 @@ class PackageService:
 
     def change_status(self, package_id: str, new_status: str, operator: str) -> dict:
         """
-        Changes the status of a package (e.g., activate, archive).
+        变更套餐状态
+
+        Args:
+            package_id: 套餐ID
+            new_status: 目标状态
+            operator: 操作人
+
+        Returns:
+            更新后的状态信息
+
+        Raises:
+            ValueError: 状态转换不合法或套餐不存在
         """
+        # 1. 获取当前套餐
+        try:
+            existing_doc = self.collection.find_one({"_id": ObjectId(package_id)})
+        except Exception as e:
+            raise ValueError(f"无效的套餐ID: {package_id}")
+
+        if not existing_doc:
+            raise ValueError(f"套餐不存在: {package_id}")
+
+        current_status = existing_doc.get("status")
+
+        # 2. 校验状态转换是否合法
+        if new_status not in self.STATE_TRANSITIONS.get(current_status, []):
+            raise ValueError(
+                f"不允许的状态转换: {current_status} -> {new_status}。"
+                f"当前状态 '{current_status}' 只能转换到: "
+                f"{self.STATE_TRANSITIONS.get(current_status, [])}"
+            )
+
+        # 3. 准备更新字段
         update_fields = {
             "status": new_status,
             "updated_by": operator,
             "updated_at": datetime.utcnow()
         }
+
+        # 记录状态变更时间
         if new_status == "active":
             update_fields["activated_at"] = datetime.utcnow()
         elif new_status == "archived":
             update_fields["archived_at"] = datetime.utcnow()
 
+        # 4. 执行更新
         result = self.collection.update_one(
             {"_id": ObjectId(package_id)},
             {"$set": update_fields}
         )
 
         if result.matched_count == 0:
-            return {"error": "Package not found"}
+            raise ValueError(f"更新失败: {package_id}")
 
+        # 5. 返回结果
         return {
             "id": package_id,
             "status": new_status,
-            f"{new_status}_at": update_fields.get(f"{new_status}_at", datetime.utcnow()).isoformat()
+            "updated_at": update_fields["updated_at"].isoformat(),
+            f"{new_status}_at": update_fields.get(
+                f"{new_status}_at",
+                update_fields["updated_at"]
+            ).isoformat()
         }
+
+    def get_package_by_id(self, package_id: str) -> dict:
+        """
+        根据ID获取套餐详情
+
+        Args:
+            package_id: 套餐ID
+
+        Returns:
+            套餐完整信息字典
+
+        Raises:
+            ValueError: 套餐不存在或ID无效
+        """
+        try:
+            doc = self.collection.find_one({"_id": ObjectId(package_id)})
+        except Exception as e:
+            raise ValueError(f"无效的套餐ID: {package_id}")
+
+        if not doc:
+            raise ValueError(f"套餐不存在: {package_id}")
+
+        # 将ObjectId转换为字符串
+        doc["_id"] = str(doc["_id"])
+        return doc
+
+    def update_package(self, package_id: str, package_data: dict, operator: str) -> dict:
+        """
+        更新套餐
+
+        Args:
+            package_id: 套餐ID
+            package_data: 更新的数据
+            operator: 操作人
+
+        Returns:
+            更新后的套餐信息
+
+        Raises:
+            ValueError: 套餐不存在、状态不允许更新、名称冲突、ID无效
+        """
+        # 1. 检查套餐是否存在
+        try:
+            existing_doc = self.collection.find_one({"_id": ObjectId(package_id)})
+        except Exception as e:
+            raise ValueError(f"无效的套餐ID: {package_id}")
+
+        if not existing_doc:
+            raise ValueError(f"套餐不存在: {package_id}")
+
+        # 2. 状态机校验：只有草稿状态才能编辑
+        if existing_doc.get("status") != "draft":
+            raise ValueError("只有草稿状态的套餐才能被编辑")
+
+        # 3. 检查名称冲突（如果修改了名称）
+        new_name = package_data.get("package_name")
+        if new_name and new_name != existing_doc.get("package_name"):
+            existing_name = self.collection.find_one({
+                "package_name": new_name,
+                "_id": {"$ne": ObjectId(package_id)}
+            })
+            if existing_name:
+                raise ValueError("套餐名称已存在")
+
+        # 4. 更新元数据
+        package_data["updated_by"] = operator
+        package_data["updated_at"] = datetime.utcnow()
+
+        # 5. 价格比例校验（如果有价格配置）
+        if (package_data.get("pricing_mode") == "fixed_linked" and
+            package_data.get("fixed_linked_config", {})
+                .get("fixed_price", {})
+                .get("pricing_method") == "custom"):
+
+            custom_prices_data = (
+                package_data.get("fixed_linked_config", {})
+                    .get("fixed_price", {})
+                    .get("custom_prices", {})
+            )
+
+            if custom_prices_data:
+                from webapp.services.pricing_engine import PricingEngine
+                from webapp.models.retail_package import CustomPrices
+
+                custom_prices = CustomPrices(**custom_prices_data)
+                validation_result = PricingEngine.validate_price_ratio(custom_prices)
+                package_data["validation"] = validation_result
+
+        # 6. 执行更新
+        try:
+            result = self.collection.update_one(
+                {"_id": ObjectId(package_id)},
+                {"$set": package_data}
+            )
+        except DuplicateKeyError:
+            raise ValueError("套餐名称已存在")
+
+        if result.matched_count == 0:
+            raise ValueError(f"更新失败: {package_id}")
+
+        # 7. 返回更新后的数据
+        return self.get_package_by_id(package_id)
+
+    def delete_package(self, package_id: str) -> None:
+        """
+        删除套餐（仅草稿状态）
+
+        Args:
+            package_id: 套餐ID
+
+        Raises:
+            ValueError: 套餐不存在、状态不允许删除、ID无效
+        """
+        # 1. 检查套餐是否存在
+        try:
+            existing_doc = self.collection.find_one({"_id": ObjectId(package_id)})
+        except Exception as e:
+            raise ValueError(f"无效的套餐ID: {package_id}")
+
+        if not existing_doc:
+            raise ValueError(f"套餐不存在: {package_id}")
+
+        # 2. 状态机校验：只有草稿状态才能删除
+        if existing_doc.get("status") != "draft":
+            raise ValueError("只有草稿状态的套餐才能被删除")
+
+        # 3. 执行删除
+        result = self.collection.delete_one({"_id": ObjectId(package_id)})
+
+        if result.deleted_count == 0:
+            raise ValueError(f"删除失败: {package_id}")
+
+    def copy_package(self, package_id: str, operator: str) -> dict:
+        """
+        复制套餐
+
+        Args:
+            package_id: 要复制的套餐ID
+            operator: 操作人
+
+        Returns:
+            新创建的套餐信息
+
+        Raises:
+            ValueError: 套餐不存在或ID无效
+        """
+        # 1. 获取原套餐
+        try:
+            original_doc = self.collection.find_one({"_id": ObjectId(package_id)})
+        except Exception as e:
+            raise ValueError(f"无效的套餐ID: {package_id}")
+
+        if not original_doc:
+            raise ValueError(f"套餐不存在: {package_id}")
+
+        # 2. 创建副本数据
+        new_package_data = dict(original_doc)
+
+        # 移除不应复制的字段
+        fields_to_remove = [
+            "_id", "created_at", "updated_at", "created_by", "updated_by",
+            "activated_at", "archived_at"
+        ]
+        for field in fields_to_remove:
+            new_package_data.pop(field, None)
+
+        # 3. 生成新的套餐名称（避免冲突）
+        original_name = original_doc.get("package_name", "")
+        new_name = f"{original_name}_副本"
+
+        # 如果新名称也存在，追加数字后缀
+        counter = 1
+        while self.collection.find_one({"package_name": new_name}):
+            counter += 1
+            new_name = f"{original_name}_副本{counter}"
+
+        new_package_data["package_name"] = new_name
+
+        # 4. 设置为草稿状态
+        new_package_data["status"] = "draft"
+
+        # 5. 使用create_package方法创建新套餐
+        return self.create_package(
+            package_data=new_package_data,
+            operator=operator,
+            status="draft"
+        )

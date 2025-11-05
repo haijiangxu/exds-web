@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, IconButton, CircularProgress, Button, TextField, InputAdornment, Select, MenuItem, InputLabel, FormControl, SelectChangeEvent, Typography, TablePagination, useMediaQuery, useTheme } from '@mui/material';
+import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, IconButton, CircularProgress, Button, TextField, InputAdornment, Select, MenuItem, InputLabel, FormControl, SelectChangeEvent, Typography, TablePagination, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Alert, Tooltip, Snackbar } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ArchiveIcon from '@mui/icons-material/Archive';
+import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import { PageHeader } from '../components/PageHeader';
 import apiClient from '../api/client';
@@ -38,8 +39,44 @@ const RetailPackagePage: React.FC = () => {
   const [editPackageId, setEditPackageId] = useState<string | undefined>(undefined);
   const [editorMode, setEditorMode] = useState<'create' | 'edit' | 'copy'>('create');
 
+  // 删除功能相关状态
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [packageToDelete, setPackageToDelete] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // 归档功能相关状态
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [packageToArchive, setPackageToArchive] = useState<string | null>(null);
+
+  // Snackbar状态管理
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // 状态判断函数（根据状态机规则）
+  const canEdit = (status: string) => status === 'draft';
+  const canDelete = (status: string) => status === 'draft';
+  const canActivate = (status: string) => status === 'draft';
+  const canArchive = (status: string) => status === 'active';
+  const canCopy = (status: string) => true; // 所有状态都能复制
+
+  // Snackbar辅助函数
+  const showSnackbar = (message: string, severity: 'success' | 'error' | 'info' | 'warning' = 'success') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
 
   const fetchPackages = async () => {
     setLoading(true);
@@ -51,10 +88,16 @@ const RetailPackagePage: React.FC = () => {
           page_size: rowsPerPage,
         }
       });
+      console.log("API响应:", response.data); // 调试信息
       setPackages(response.data.items);
       setTotalCount(response.data.total);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to fetch packages", error);
+        console.error("错误详情:", error.response?.data); // 打印详细错误
+        const errorMsg = error.response?.data?.detail || error.message || "加载套餐列表失败";
+        showSnackbar(errorMsg, 'error');
+        setPackages([]); // 确保清空列表
+        setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -97,8 +140,29 @@ const RetailPackagePage: React.FC = () => {
   };
 
   const handleArchive = async (packageId: string) => {
-    await apiClient.post(`/api/v1/retail-packages/${packageId}/archive`);
-    fetchPackages();
+    setPackageToArchive(packageId);
+    setArchiveDialogOpen(true);
+  };
+
+  const handleArchiveConfirm = async () => {
+    if (!packageToArchive) return;
+
+    try {
+      await apiClient.post(`/api/v1/retail-packages/${packageToArchive}/archive`);
+      setArchiveDialogOpen(false);
+      setPackageToArchive(null);
+      fetchPackages();
+      showSnackbar('套餐归档成功', 'success');
+    } catch (error: any) {
+      console.error("归档失败", error);
+      const errorMsg = error.response?.data?.detail || '归档失败，请重试';
+      showSnackbar(errorMsg, 'error');
+    }
+  };
+
+  const handleArchiveCancel = () => {
+    setArchiveDialogOpen(false);
+    setPackageToArchive(null);
   };
 
   const handleEdit = (packageId: string) => {
@@ -129,14 +193,52 @@ const RetailPackagePage: React.FC = () => {
     try {
         if (editorMode === 'edit') {
             await apiClient.put(`/api/v1/retail-packages/${editPackageId}`, payload);
-        } else { // create or copy mode
+            showSnackbar('套餐更新成功', 'success');
+        } else if (editorMode === 'copy') {
+            await apiClient.post(`/api/v1/retail-packages/${editPackageId}/copy`, payload);
+            showSnackbar('套餐复制成功', 'success');
+        } else { // create mode
             await apiClient.post('/api/v1/retail-packages', payload);
+            showSnackbar('套餐创建成功', 'success');
         }
         setEditorOpen(false);
         fetchPackages(); // Refresh the list
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to save package", error);
+        const errorMsg = error.response?.data?.detail || '操作失败，请重试';
+        showSnackbar(errorMsg, 'error');
+        // 不要关闭对话框，让用户可以修改后重试
+        throw error;
     }
+  };
+
+  // 删除功能相关处理函数
+  const handleDeleteClick = (packageId: string) => {
+    setPackageToDelete(packageId);
+    setDeleteDialogOpen(true);
+    setDeleteError(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!packageToDelete) return;
+
+    try {
+      await apiClient.delete(`/api/v1/retail-packages/${packageToDelete}`);
+      setDeleteDialogOpen(false);
+      setPackageToDelete(null);
+      fetchPackages(); // 刷新列表
+      showSnackbar('套餐删除成功', 'success');
+    } catch (error: any) {
+      console.error("删除失败", error);
+      const errorMsg = error.response?.data?.detail || "删除失败，请重试";
+      setDeleteError(errorMsg);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setPackageToDelete(null);
+    setDeleteError(null);
   };
 
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -291,15 +393,45 @@ const RetailPackagePage: React.FC = () => {
                       <Typography variant="body2">{format(new Date(pkg.created_at), 'yyyy-MM-dd HH:mm')}</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                      <IconButton size="small" onClick={() => handleEdit(pkg.id)}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton size="small" onClick={() => handleCopy(pkg.id)}>
-                        <ContentCopyIcon />
-                      </IconButton>
-                      <IconButton size="small" onClick={() => handleArchive(pkg.id)}>
-                        <ArchiveIcon />
-                      </IconButton>
+                      <Tooltip title={canEdit(pkg.status) ? "编辑套餐" : "只有草稿状态才能编辑"}>
+                        <span>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleEdit(pkg.id)}
+                            disabled={!canEdit(pkg.status)}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="复制套餐">
+                        <IconButton size="small" onClick={() => handleCopy(pkg.id)}>
+                          <ContentCopyIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title={canArchive(pkg.status) ? "归档套餐" : "只有生效状态才能归档"}>
+                        <span>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleArchive(pkg.id)}
+                            disabled={!canArchive(pkg.status)}
+                          >
+                            <ArchiveIcon />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                      {/* 新增：删除按钮（仅草稿可见） */}
+                      {pkg.status === 'draft' && (
+                        <Tooltip title="删除套餐">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteClick(pkg.id)}
+                            color="error"
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </Box>
                   </Paper>
                 ))}
@@ -355,15 +487,45 @@ const RetailPackagePage: React.FC = () => {
                           </TableCell>
                           <TableCell>{format(new Date(pkg.created_at), 'yyyy-MM-dd HH:mm')}</TableCell>
                           <TableCell align="right">
-                            <IconButton size="small" onClick={() => handleEdit(pkg.id)}>
-                              <EditIcon />
-                            </IconButton>
-                            <IconButton size="small" onClick={() => handleCopy(pkg.id)}>
-                              <ContentCopyIcon />
-                            </IconButton>
-                            <IconButton size="small" onClick={() => handleArchive(pkg.id)}>
-                              <ArchiveIcon />
-                            </IconButton>
+                            <Tooltip title={canEdit(pkg.status) ? "编辑套餐" : "只有草稿状态才能编辑"}>
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleEdit(pkg.id)}
+                                  disabled={!canEdit(pkg.status)}
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="复制套餐">
+                              <IconButton size="small" onClick={() => handleCopy(pkg.id)}>
+                                <ContentCopyIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title={canArchive(pkg.status) ? "归档套餐" : "只有生效状态才能归档"}>
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleArchive(pkg.id)}
+                                  disabled={!canArchive(pkg.status)}
+                                >
+                                  <ArchiveIcon />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                            {/* 新增：删除按钮（仅草稿可见） */}
+                            {pkg.status === 'draft' && (
+                              <Tooltip title="删除套餐">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDeleteClick(pkg.id)}
+                                  color="error"
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -391,6 +553,67 @@ const RetailPackagePage: React.FC = () => {
               mode={editorMode}
               onSave={handleSave}
           />
+
+          {/* 删除确认对话框 */}
+          <Dialog
+            open={deleteDialogOpen}
+            onClose={handleDeleteCancel}
+            aria-labelledby="delete-dialog-title"
+          >
+            <DialogTitle id="delete-dialog-title">确认删除</DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+                确定要删除这个套餐吗？此操作不可撤销。
+              </DialogContentText>
+              {deleteError && (
+                <Alert severity="error" sx={{ mt: 2 }}>
+                  {deleteError}
+                </Alert>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleDeleteCancel}>取消</Button>
+              <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+                删除
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* 归档确认对话框 */}
+          <Dialog
+            open={archiveDialogOpen}
+            onClose={handleArchiveCancel}
+            aria-labelledby="archive-dialog-title"
+          >
+            <DialogTitle id="archive-dialog-title">确认归档</DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+                归档后的套餐将不能再编辑或激活，确定要归档吗？
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleArchiveCancel}>取消</Button>
+              <Button onClick={handleArchiveConfirm} color="warning" variant="contained">
+                归档
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* 全局 Snackbar 反馈 */}
+          <Snackbar
+            open={snackbar.open}
+            autoHideDuration={3000}
+            onClose={handleSnackbarClose}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          >
+            <Alert
+              onClose={handleSnackbarClose}
+              severity={snackbar.severity}
+              sx={{ width: '100%' }}
+            >
+              {snackbar.message}
+            </Alert>
+          </Snackbar>
     </Box>
   );
 };
