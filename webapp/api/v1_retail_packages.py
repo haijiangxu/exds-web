@@ -25,6 +25,38 @@ async def create_package(
     )
     return result
 
+@router.put("/{package_id}", response_model=dict)
+async def update_package(
+    package_id: str,
+    package: RetailPackage,
+    current_user: User = Depends(get_current_active_user)
+):
+    """Update an existing retail package."""
+    service = PackageService(DATABASE)
+    result = await service.update_package(
+        package_id=package_id,
+        package_data=package.dict(exclude_unset=True),
+        operator=current_user.username
+    )
+    if "error" in result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
+    return result
+
+@router.post("/{package_id}/copy", response_model=dict)
+async def copy_package(
+    package_id: str,
+    current_user: User = Depends(get_current_active_user)
+):
+    """Copy an existing retail package."""
+    service = PackageService(DATABASE)
+    result = await service.copy_package(
+        package_id=package_id,
+        operator=current_user.username
+    )
+    if "error" in result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
+    return result
+
 @router.get("", response_model=PackageListResponse)
 async def list_packages(
     keyword: Optional[str] = None,
@@ -77,14 +109,4 @@ async def archive_package(
     )
     if "error" in result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
-    return result
-
-@router.post("/validate-price-ratio", response_model=dict)
-async def validate_price_ratio(
-    custom_prices: CustomPrices,
-    current_user: User = Depends(get_current_active_user)
-):
-    """Validate custom price ratios."""
-    engine = PricingEngine()
-    result = engine.validate_price_ratio(custom_prices)
     return result

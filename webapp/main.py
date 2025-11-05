@@ -47,7 +47,7 @@ app.add_middleware(
 
 # --- API Routes ---
 
-@app.post("/token", response_model=Token, tags=["Authentication"])
+@app.post("/api/v1/token", response_model=Token, tags=["Authentication"])
 @limiter.limit("5/minute")
 async def login_for_access_token(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(db, form_data.username, form_data.password)

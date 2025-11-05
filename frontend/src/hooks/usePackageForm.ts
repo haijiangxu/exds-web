@@ -1,62 +1,77 @@
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 
-const customPricesSchema = z.object({
-  peak: z.number().min(0),
-  high: z.number().min(0),
-  flat: z.number().min(331.44).max(497.16),
-  valley: z.number().min(0),
-  deep_valley: z.number().min(0)
-});
 
-const packageSchema = z.object({
-  package_name: z.string().min(1, '套餐名称不能为空'),
-  package_description: z.string().optional(),
-  package_type: z.enum(['time_based', 'non_time_based']),
-  pricing_mode: z.enum(['fixed_linked', 'price_spread']),
-  fixed_linked_config: z.object({
-    fixed_price: z.object({
-      pricing_method: z.enum(['custom', 'reference']),
-      custom_prices: customPricesSchema.optional(),
-      reference_target: z.string().optional(), // Added for fixed price reference
-    }),
-    linked_price: z.object({
-      ratio: z.number().min(0).max(0.2),
-      target: z.enum(['day_ahead_avg', 'real_time_avg'])
-    }),
-    floating_fee: z.number().min(0).default(0)
-  }).optional(),
-  price_spread_config: z.object({ // Added price_spread_config
-    reference_price: z.object({
-        target: z.enum(["market_monthly_avg", "grid_agency", "wholesale_settlement"]),
-    }),
-    price_spread: z.object({
-        agreed_spread: z.number().min(0),
-        sharing_ratio: z.number().min(0).max(1), // 0 to 1 for 0-100%
-    }),
-    floating_fee: z.number().min(0).default(0),
-  }).optional(),
-  additional_terms: z.object({
-    green_power: z.object({
-        enabled: z.boolean(),
-        monthly_env_value: z.number().optional(),
-        deviation_compensation_ratio: z.number().optional(),
-    }),
-    price_cap: z.object({
-        enabled: z.boolean(),
-        reference_target: z.string().optional(), // Added for price cap reference
-        non_peak_markup: z.number().optional(),
-        peak_markup: z.number().optional(),
-    }),
-  }).optional(),
-});
+export interface CustomPrices {
+  peak: number;
+  high: number;
+  flat: number;
+  valley: number;
+  deep_valley: number;
+}
 
-export type PackageFormData = z.infer<typeof packageSchema>;
+export interface FixedPriceConfig {
+  pricing_method: 'custom' | 'reference';
+  custom_prices?: CustomPrices;
+  reference_target?: 'grid_agency_price' | 'market_monthly_avg';
+}
+
+export interface LinkedPriceConfig {
+  ratio: number;
+  target: 'day_ahead_avg' | 'real_time_avg';
+}
+
+export interface FixedLinkedConfig {
+  fixed_price: FixedPriceConfig;
+  linked_price: LinkedPriceConfig;
+  floating_fee: number;
+}
+
+export interface PriceSpreadReferencePrice {
+  target: 'market_monthly_avg' | 'grid_agency' | 'wholesale_settlement';
+  value?: number;
+}
+
+export interface PriceSpreadSharing {
+  agreed_spread: number;
+  sharing_ratio: number;
+}
+
+export interface PriceSpreadConfig {
+  reference_price: PriceSpreadReferencePrice;
+  price_spread: PriceSpreadSharing;
+  floating_fee: number;
+}
+
+export interface GreenPowerTerm {
+  enabled: boolean;
+  monthly_env_value?: number;
+  deviation_compensation_ratio?: number;
+}
+
+export interface PriceCapTerm {
+  enabled: boolean;
+  reference_target?: string;
+  non_peak_markup?: number;
+  peak_markup?: number;
+}
+
+export interface AdditionalTerms {
+  green_power: GreenPowerTerm;
+  price_cap: PriceCapTerm;
+}
+
+export interface PackageFormData {
+  package_name: string;
+  package_description?: string;
+  package_type: 'time_based' | 'non_time_based';
+  pricing_mode: 'fixed_linked' | 'price_spread';
+  fixed_linked_config?: FixedLinkedConfig;
+  price_spread_config?: PriceSpreadConfig;
+  additional_terms?: AdditionalTerms;
+}
 
 export const usePackageForm = (defaultValues?: any) => {
   return useForm<PackageFormData>({
-    resolver: zodResolver(packageSchema),
     defaultValues: defaultValues || {
       package_name: '',
       package_type: 'time_based',

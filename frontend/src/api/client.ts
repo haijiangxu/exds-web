@@ -60,7 +60,7 @@ export const login = (username: string, password: string) => {
     params.append('username', username);
     params.append('password', password);
 
-    return apiClient.post('/token', params, {
+    return apiClient.post('/api/v1/token', params, {
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },

@@ -29,11 +29,11 @@ class BaseMongoModel(BaseModel):
 
 # Models based on design document
 class CustomPrices(BaseModel):
-    peak: float = Field(..., ge=0, description="尖峰时段价格")
-    high: float = Field(..., ge=0, description="峰时段价格")
-    flat: float = Field(..., ge=331.44, le=497.16, description="平时段价格")
-    valley: float = Field(..., ge=0, description="谷时段价格")
-    deep_valley: float = Field(..., ge=0, description="深谷时段价格")
+    peak: float = Field(..., description="尖峰时段价格")
+    high: float = Field(..., description="峰时段价格")
+    flat: float = Field(..., description="平时段价格")
+    valley: float = Field(..., description="谷时段价格")
+    deep_valley: float = Field(..., description="深谷时段价格")
 
 class FixedPriceConfig(BaseModel):
     pricing_method: Literal["custom", "reference"]
@@ -42,13 +42,13 @@ class FixedPriceConfig(BaseModel):
     reference_prices: Optional[dict] = None # To store snapshot of referenced prices
 
 class LinkedPriceConfig(BaseModel):
-    ratio: float = Field(..., ge=0, le=0.2, description="联动比例 α (0.1 ~ 0.2)")
+    ratio: float = Field(..., description="联动比例 α (0.1 ~ 0.2)")
     target: Literal["day_ahead_avg", "real_time_avg"]
 
 class FixedLinkedConfig(BaseModel):
     fixed_price: FixedPriceConfig
     linked_price: LinkedPriceConfig
-    floating_fee: float = Field(default=0, ge=0, description="浮动费用 (元/kWh)")
+    floating_fee: float = Field(default=0, description="浮动费用 (元/kWh)")
 
 class PriceSpreadReferencePrice(BaseModel):
     target: Literal["market_monthly_avg", "grid_agency", "wholesale_settlement"]
@@ -56,34 +56,32 @@ class PriceSpreadReferencePrice(BaseModel):
 
 class PriceSpreadSharing(BaseModel):
     agreed_spread: float = Field(..., description="约定价差（元/MWh）")
-    sharing_ratio: float = Field(..., ge=0, le=1, description="分成比例 k (0 ~ 1)")
+    sharing_ratio: float = Field(..., description="分成比例 k (0 ~ 1)")
 
 class PriceSpreadConfig(BaseModel):
     reference_price: PriceSpreadReferencePrice
     price_spread: PriceSpreadSharing
-    floating_fee: float = Field(default=0, ge=0, description="浮动费用（元）")
+    floating_fee: float = Field(default=0, description="浮动费用（元）")
 
 class GreenPowerTerm(BaseModel):
     enabled: bool = False
-    monthly_env_value: Optional[float] = Field(None, ge=0, description="月度绿色电力环境价值（元/MWh）")
-    deviation_compensation_ratio: Optional[float] = Field(None, ge=0, description="偏差补偿比例（%）")
+    monthly_env_value: Optional[float] = Field(None, description="月度绿色电力环境价值（元/MWh）")
+    deviation_compensation_ratio: Optional[float] = Field(None, description="偏差补偿比例（%）")
 
 class PriceCapTerm(BaseModel):
     enabled: bool = False
     reference_target: Optional[str] = None
-    non_peak_markup: Optional[float] = Field(None, ge=0, description="非尖峰月份上浮（%）")
-    peak_markup: Optional[float] = Field(None, ge=0, description="尖峰月份上浮（%）")
+    non_peak_markup: Optional[float] = Field(None, description="非尖峰月份上浮（%）")
+    peak_markup: Optional[float] = Field(None, description="尖峰月份上浮（%）")
 
 class AdditionalTerms(BaseModel):
     green_power: GreenPowerTerm = Field(default_factory=GreenPowerTerm)
     price_cap: PriceCapTerm = Field(default_factory=PriceCapTerm)
 
-class ValidationInfo(BaseModel):
-    price_ratio_compliant: bool = True
-    warnings: List[str] = []
+
 
 class RetailPackage(BaseMongoModel):
-    package_name: str = Field(..., min_length=1, max_length=100)
+    package_name: str = Field(...)
     package_description: Optional[str] = None
     package_type: Literal["time_based", "non_time_based"]
     pricing_mode: Literal["fixed_linked", "price_spread"]
@@ -95,7 +93,7 @@ class RetailPackage(BaseMongoModel):
     
     status: Literal["draft", "active", "archived"] = "draft"
     
-    validation: ValidationInfo = Field(default_factory=ValidationInfo)
+
 
     created_by: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -104,13 +102,7 @@ class RetailPackage(BaseMongoModel):
     activated_at: Optional[datetime] = None
     archived_at: Optional[datetime] = None
 
-    @model_validator(mode='after')
-    def validate_pricing_config(self):
-        if self.pricing_mode == 'fixed_linked' and not self.fixed_linked_config:
-            raise ValueError("固定+联动模式必须提供 'fixed_linked_config'")
-        if self.pricing_mode == 'price_spread' and not self.price_spread_config:
-            raise ValueError("价差分成模式必须提供 'price_spread_config'")
-        return self
+
 
 class RetailPackageListItem(BaseMongoModel):
     package_name: str
