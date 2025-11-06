@@ -3,6 +3,7 @@ import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, Tab
 import EditIcon from '@mui/icons-material/Edit';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ArchiveIcon from '@mui/icons-material/Archive';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import { PageHeader } from '../components/PageHeader';
@@ -27,6 +28,26 @@ interface Package {
 // 辅助函数：获取套餐ID（兼容 id 和 _id）
 const getPackageId = (pkg: Package): string => {
   return pkg.id || pkg._id || '';
+};
+
+// 状态中文映射
+const statusMap: { [key: string]: string } = {
+  draft: '草稿',
+  active: '生效',
+  archived: '归档',
+};
+
+// 根据状态获取Chip颜色
+const getStatusChipColor = (status: string): 'success' | 'warning' | 'default' => {
+    switch (status) {
+        case 'active':
+            return 'success';
+        case 'archived':
+            return 'warning';
+        case 'draft':
+        default:
+            return 'default';
+    }
 };
 
 const RetailPackagePage: React.FC = () => {
@@ -58,6 +79,11 @@ const RetailPackagePage: React.FC = () => {
   // 归档功能相关状态
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [packageToArchive, setPackageToArchive] = useState<string | null>(null);
+
+  // 激活功能相关状态
+  const [activateDialogOpen, setActivateDialogOpen] = useState(false);
+  const [packageToActivate, setPackageToActivate] = useState<string | null>(null);
+
 
   // Snackbar状态管理
   const [snackbar, setSnackbar] = useState<{
@@ -176,6 +202,32 @@ const RetailPackagePage: React.FC = () => {
     setPackageToArchive(null);
   };
 
+  const handleActivate = async (packageId: string) => {
+    setPackageToActivate(packageId);
+    setActivateDialogOpen(true);
+  };
+
+  const handleActivateConfirm = async () => {
+    if (!packageToActivate) return;
+
+    try {
+      await apiClient.post(`/api/v1/retail-packages/${packageToActivate}/activate`);
+      setActivateDialogOpen(false);
+      setPackageToActivate(null);
+      fetchPackages();
+      showSnackbar('套餐激活成功', 'success');
+    } catch (error: any) {
+      console.error("激活失败", error);
+      const errorMsg = error.response?.data?.detail || '激活失败，请重试';
+      showSnackbar(errorMsg, 'error');
+    }
+  };
+
+  const handleActivateCancel = () => {
+    setActivateDialogOpen(false);
+    setPackageToActivate(null);
+  };
+
   // 查看详情处理函数
   const handleViewDetails = (packageId: string) => {
     setDetailsPackageId(packageId);
@@ -211,12 +263,13 @@ const RetailPackagePage: React.FC = () => {
         if (editorMode === 'edit') {
             await apiClient.put(`/api/v1/retail-packages/${editPackageId}`, payload);
             showSnackbar('套餐更新成功', 'success');
-        } else if (editorMode === 'copy') {
-            await apiClient.post(`/api/v1/retail-packages/${editPackageId}/copy`, payload);
-            showSnackbar('套餐复制成功', 'success');
-        } else { // create mode
+        } else { // create or copy mode
             await apiClient.post('/api/v1/retail-packages', payload);
-            showSnackbar('套餐创建成功', 'success');
+            if (editorMode === 'copy') {
+                showSnackbar('套餐复制成功', 'success');
+            } else {
+                showSnackbar('套餐创建成功', 'success');
+            }
         }
         setEditorOpen(false);
         fetchPackages(); // Refresh the list
@@ -329,7 +382,7 @@ const RetailPackagePage: React.FC = () => {
                   <MenuItem value="archived">归档</MenuItem>
               </Select>
           </FormControl>
-          <Button variant="contained" onClick={handleSearch}>查询</Button>
+          <Button variant="contained" onClick={handleSearch}>刷新</Button>
           <Button variant="outlined" onClick={handleResetFilters}>重置</Button>
         </Box>
       </Paper>
@@ -338,7 +391,6 @@ const RetailPackagePage: React.FC = () => {
       <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 } }}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Button variant="contained" color="primary" onClick={handleCreate}>+ 新增</Button>
-          <Button variant="outlined">导出</Button> {/* Export button */}
         </Box>
         {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
@@ -414,40 +466,50 @@ const RetailPackagePage: React.FC = () => {
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body2" color="text.secondary">状态:</Typography>
-                      <Chip label={pkg.status} size="small" color={pkg.status === 'active' ? 'success' : 'default'} />
+                      <Chip label={statusMap[pkg.status] || pkg.status} size="small" color={getStatusChipColor(pkg.status)} />
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body2" color="text.secondary">创建时间:</Typography>
                       <Typography variant="body2">{format(new Date(pkg.created_at), 'yyyy-MM-dd HH:mm')}</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                      <Tooltip title={canEdit(pkg.status) ? "编辑套餐" : "只有草稿状态才能编辑"}>
-                        <span>
+                      {canEdit(pkg.status) && (
+                        <Tooltip title="编辑套餐">
                           <IconButton
                             size="small"
                             onClick={() => handleEdit(getPackageId(pkg))}
-                            disabled={!canEdit(pkg.status)}
                           >
                             <EditIcon />
                           </IconButton>
-                        </span>
-                      </Tooltip>
+                        </Tooltip>
+                      )}
                       <Tooltip title="复制套餐">
                         <IconButton size="small" onClick={() => handleCopy(getPackageId(pkg))}>
                           <ContentCopyIcon />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title={canArchive(pkg.status) ? "归档套餐" : "只有生效状态才能归档"}>
-                        <span>
+                      {canActivate(pkg.status) && (
+                        <Tooltip title="激活套餐">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleActivate(getPackageId(pkg))}
+                            color="success"
+                          >
+                            <CheckCircleIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {canArchive(pkg.status) && (
+                        <Tooltip title="归档套餐">
                           <IconButton
                             size="small"
                             onClick={() => handleArchive(getPackageId(pkg))}
-                            disabled={!canArchive(pkg.status)}
+                            color="warning"
                           >
                             <ArchiveIcon />
                           </IconButton>
-                        </span>
-                      </Tooltip>
+                        </Tooltip>
+                      )}
                       {/* 新增：删除按钮（仅草稿可见） */}
                       {pkg.status === 'draft' && (
                         <Tooltip title="删除套餐">
@@ -519,40 +581,50 @@ const RetailPackagePage: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <Chip
-                              label={pkg.status}
+                              label={statusMap[pkg.status] || pkg.status}
                               size="small"
-                              color={pkg.status === 'active' ? 'success' : 'default'}
+                              color={getStatusChipColor(pkg.status)}
                             />
                           </TableCell>
                           <TableCell>{format(new Date(pkg.created_at), 'yyyy-MM-dd HH:mm')}</TableCell>
                           <TableCell align="right">
-                            <Tooltip title={canEdit(pkg.status) ? "编辑套餐" : "只有草稿状态才能编辑"}>
-                              <span>
+                            {canEdit(pkg.status) && (
+                              <Tooltip title="编辑套餐">
                                 <IconButton
                                   size="small"
                                   onClick={() => handleEdit(getPackageId(pkg))}
-                                  disabled={!canEdit(pkg.status)}
                                 >
                                   <EditIcon />
                                 </IconButton>
-                              </span>
-                            </Tooltip>
+                              </Tooltip>
+                            )}
                             <Tooltip title="复制套餐">
                               <IconButton size="small" onClick={() => handleCopy(getPackageId(pkg))}>
                                 <ContentCopyIcon />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title={canArchive(pkg.status) ? "归档套餐" : "只有生效状态才能归档"}>
-                              <span>
+                            {canActivate(pkg.status) && (
+                              <Tooltip title="激活套餐">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleActivate(getPackageId(pkg))}
+                                  color="success"
+                                >
+                                  <CheckCircleIcon />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            {canArchive(pkg.status) && (
+                              <Tooltip title="归档套餐">
                                 <IconButton
                                   size="small"
                                   onClick={() => handleArchive(getPackageId(pkg))}
-                                  disabled={!canArchive(pkg.status)}
+                                  color="warning"
                                 >
                                   <ArchiveIcon />
                                 </IconButton>
-                              </span>
-                            </Tooltip>
+                              </Tooltip>
+                            )}
                             {/* 新增：删除按钮（仅草稿可见） */}
                             {pkg.status === 'draft' && (
                               <Tooltip title="删除套餐">
@@ -596,7 +668,13 @@ const RetailPackagePage: React.FC = () => {
           {/* 删除确认对话框 */}
           <Dialog
             open={deleteDialogOpen}
-            onClose={handleDeleteCancel}
+            onClose={(event, reason) => {
+              if (reason && reason === "backdropClick") {
+                return;
+              }
+              handleDeleteCancel();
+            }}
+            disableEnforceFocus
             aria-labelledby="delete-dialog-title"
           >
             <DialogTitle id="delete-dialog-title">确认删除</DialogTitle>
@@ -621,7 +699,13 @@ const RetailPackagePage: React.FC = () => {
           {/* 归档确认对话框 */}
           <Dialog
             open={archiveDialogOpen}
-            onClose={handleArchiveCancel}
+            onClose={(event, reason) => {
+              if (reason && reason === "backdropClick") {
+                return;
+              }
+              handleArchiveCancel();
+            }}
+            disableEnforceFocus
             aria-labelledby="archive-dialog-title"
           >
             <DialogTitle id="archive-dialog-title">确认归档</DialogTitle>
@@ -634,6 +718,32 @@ const RetailPackagePage: React.FC = () => {
               <Button onClick={handleArchiveCancel}>取消</Button>
               <Button onClick={handleArchiveConfirm} color="warning" variant="contained">
                 归档
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* 激活确认对话框 */}
+          <Dialog
+            open={activateDialogOpen}
+            onClose={(event, reason) => {
+              if (reason && reason === "backdropClick") {
+                return;
+              }
+              handleActivateCancel();
+            }}
+            disableEnforceFocus
+            aria-labelledby="activate-dialog-title"
+          >
+            <DialogTitle id="activate-dialog-title">确认激活</DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+                激活后的套餐将对用户可见并可供选择，确定要激活吗？
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleActivateCancel}>取消</Button>
+              <Button onClick={handleActivateConfirm} color="success" variant="contained">
+                激活
               </Button>
             </DialogActions>
           </Dialog>

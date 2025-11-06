@@ -112,6 +112,10 @@ npm test --prefix frontend
    - 使用 MongoDB 聚合管道优化复杂查询
    - 公开/受保护路由分离
 
+## 开发指南
+
+- **[CRUD 功能模块开发指南](docs/CRUD_Module_Development_Guide.md)**：以“零售套餐管理”为例，提供标准增删改查模块的详细开发步骤和规范。
+
 ## 关键开发规范
 
 ### 0. 前端页面设计规范（必读）

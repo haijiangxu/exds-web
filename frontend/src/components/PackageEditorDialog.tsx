@@ -26,6 +26,17 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
   const [loadingPackageData, setLoadingPackageData] = useState(false); // New state for loading
   const [saving, setSaving] = useState(false); // 新增：保存状态
 
+  // 阻止背景点击关闭对话框
+  const handleClose = (event: {}, reason: "backdropClick" | "escapeKeyDown") => {
+    // 在保存期间，禁用所有关闭操作
+    if (saving) return;
+
+    if (reason && reason === "backdropClick") {
+      return;
+    }
+    onClose();
+  };
+
   useEffect(() => {
     if (open) {
       if (mode === 'create') {
@@ -35,7 +46,12 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
         apiClient.get(`/api/v1/retail-packages/${packageId}`)
           .then(response => {
             let fetchedData = response.data;
-
+            if (mode === 'copy') {
+              fetchedData.package_name = fetchedData.package_name + '_副本';
+              // 当复制时，删除原始ID，确保后端能创建新实体
+              delete fetchedData.id;
+              delete fetchedData._id;
+            }
             reset(fetchedData); // Pre-fill form with fetched or modified data
           })
           .catch(error => {
@@ -188,35 +204,35 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
                                         <Controller
                                         name="fixed_linked_config.fixed_price.custom_prices.peak"
                                         control={control}
-                                        render={({ field }) => <TextField {...field} type="number" label="尖峰时段价格" fullWidth variant="standard" />}
+                                        render={({ field }) => <TextField {...field} type="number" label="尖峰时段价格 (元/MWh)" fullWidth variant="standard" />} 
                                         />
                                     </Grid>
                                     <Grid size={{ xs: 6, sm: 4 }}>
                                         <Controller
                                         name="fixed_linked_config.fixed_price.custom_prices.high"
                                         control={control}
-                                        render={({ field }) => <TextField {...field} type="number" label="峰时段价格" fullWidth variant="standard" />}
+                                        render={({ field }) => <TextField {...field} type="number" label="峰时段价格 (元/MWh)" fullWidth variant="standard" />} 
                                         />
                                     </Grid>
                                     <Grid size={{ xs: 6, sm: 4 }}>
                                         <Controller
                                         name="fixed_linked_config.fixed_price.custom_prices.flat"
                                         control={control}
-                                        render={({ field }) => <TextField {...field} type="number" label="平时段价格" fullWidth variant="standard" />}
+                                        render={({ field }) => <TextField {...field} type="number" label="平时段价格 (元/MWh)" fullWidth variant="standard" />} 
                                         />
                                     </Grid>
                                     <Grid size={{ xs: 6, sm: 4 }}>
                                         <Controller
                                         name="fixed_linked_config.fixed_price.custom_prices.valley"
                                         control={control}
-                                        render={({ field }) => <TextField {...field} type="number" label="谷时段价格" fullWidth variant="standard" />}
+                                        render={({ field }) => <TextField {...field} type="number" label="谷时段价格 (元/MWh)" fullWidth variant="standard" />} 
                                         />
                                     </Grid>
                                     <Grid size={{ xs: 6, sm: 4 }}>
                                         <Controller
                                         name="fixed_linked_config.fixed_price.custom_prices.deep_valley"
                                         control={control}
-                                        render={({ field }) => <TextField {...field} type="number" label="深谷时段价格" fullWidth variant="standard" />}
+                                        render={({ field }) => <TextField {...field} type="number" label="深谷时段价格 (元/MWh)" fullWidth variant="standard" />} 
                                         />
                                     </Grid>
 
@@ -236,6 +252,16 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
                                     )}
                                 </>
                             )}
+                            {packageType === 'non_time_based' && fixedPricingMethod === 'custom' && (
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                    <Controller
+                                    name="fixed_linked_config.fixed_price.custom_prices.all_day"
+                                    control={control}
+                                    render={({ field }) => <TextField {...field} type="number" label="自定义价格 (元/MWh)" fullWidth variant="standard" />} 
+                                    />
+                                </Grid>
+                            )}
+
                             {/* Reference pricing method for fixed price */}
                             {fixedPricingMethod === 'reference' && (
                                 <Grid size={{ xs: 12 }}>
@@ -274,7 +300,7 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
                                 label="联动比例 (α) (%)"
                                 fullWidth
                                 variant="standard"
-                                inputProps={{ step: "0.01" }} 
+                                inputProps={{ step: "1" }} 
                                 helperText="提示: 10%~20%，特定用户可为0"
                               />
                             )}
@@ -312,7 +338,7 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
                               <TextField
                                 {...field}
                                 type="number"
-                                label="浮动费用 (元/kWh)"
+                                label="浮动费用 (元/MWh)"
                                 fullWidth
                                 variant="standard"
                                 inputProps={{ step: "0.01" }}
@@ -374,7 +400,7 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
                                 label="约定价差 (元/MWh)"
                                 fullWidth
                                 variant="standard"
-                                inputProps={{ step: "0.01" }}
+                                inputProps={{ step: "1" }}
                                 helperText="提示: 可为固定值或参考价之差"
                               />
                             )}
@@ -391,7 +417,7 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
                                 label="分成比例 (k) (%)"
                                 fullWidth
                                 variant="standard"
-                                inputProps={{ step: "0.01" }}
+                                inputProps={{ step: "1" }}
                                 helperText="提示: 0%~100%"
                               />
                             )}
@@ -413,7 +439,7 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
                               <TextField
                                 {...field}
                                 type="number"
-                                label="浮动费用 (元)"
+                                label="浮动费用 (元/MWh)"
                                 fullWidth
                                 variant="standard"
                                 inputProps={{ step: "0.01" }}
@@ -460,12 +486,12 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
                   <Controller
                     name="additional_terms.green_power.monthly_env_value"
                     control={control}
-                    render={({ field }) => <TextField {...field} type="number" label="月度绿色电力环境价值 (元/MWh)" fullWidth margin="dense" />}
+                    render={({ field }) => <TextField {...field} type="number" label="月度绿色电力环境价值 (元/MWh)" fullWidth margin="dense" />} 
                   />
                   <Controller
                     name="additional_terms.green_power.deviation_compensation_ratio"
                     control={control}
-                    render={({ field }) => <TextField {...field} type="number" label="偏差补偿比例 (%)" fullWidth margin="dense" />}
+                    render={({ field }) => <TextField {...field} type="number" label="偏差补偿比例 (%)" fullWidth margin="dense" />} 
                   />
                   <FormHelperText sx={{ mt: 1 }}>
                     “双方用电量与约定电量偏差时，将按此比例进行补偿”。
@@ -505,12 +531,12 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
                   <Controller
                     name="additional_terms.price_cap.non_peak_markup"
                     control={control}
-                    render={({ field }) => <TextField {...field} type="number" label="非尖峰月份上浮 (%)" fullWidth margin="dense" />}
+                    render={({ field }) => <TextField {...field} type="number" label="非尖峰月份上浮 (%)" fullWidth margin="dense" />} 
                   />
                   <Controller
                     name="additional_terms.price_cap.peak_markup"
                     control={control}
-                    render={({ field }) => <TextField {...field} type="number" label="尖峰月份上浮 (%)" fullWidth margin="dense" />}
+                    render={({ field }) => <TextField {...field} type="number" label="尖峰月份上浮 (%)" fullWidth margin="dense" />} 
                   />
                   <FormHelperText sx={{ mt: 1 }}>
                     “结算时，若套餐结算价高于封顶价，将按封顶价结算”。
@@ -553,7 +579,7 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullScreen={isMobile} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={handleClose} fullScreen={isMobile} maxWidth="md" fullWidth>
       <DialogTitle>
         {mode === 'create' ? '新建零售套餐' : (mode === 'edit' ? '编辑零售套餐' : '复制零售套餐')}
       </DialogTitle>
@@ -580,13 +606,6 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
           disabled={loadingPackageData || saving}
         >
           {saving ? '保存中...' : '保存为草稿'}
-        </Button>
-        <Button
-          variant="contained"
-          onClick={() => handleSaveClick(false)}
-          disabled={loadingPackageData || saving}
-        >
-          {saving ? '保存中...' : '保存并生效'}
         </Button>
       </DialogActions>
     </Dialog>

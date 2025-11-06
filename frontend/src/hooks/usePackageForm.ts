@@ -7,6 +7,7 @@ export interface CustomPrices {
   flat: number;
   valley: number;
   deep_valley: number;
+  all_day?: number;
 }
 
 export interface FixedPriceConfig {
@@ -84,12 +85,13 @@ export const usePackageForm = (defaultValues?: any) => {
             high: 0,
             flat: 331.44,
             valley: 0,
-            deep_valley: 0
+            deep_valley: 0,
+            all_day: 0
           },
           reference_target: 'grid_agency_price' // Default for reference
         },
         linked_price: {
-          ratio: 0.15,
+          ratio: 15,
           target: 'day_ahead_avg'
         },
         floating_fee: 0

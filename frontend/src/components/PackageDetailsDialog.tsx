@@ -25,6 +25,14 @@ export const PackageDetailsDialog: React.FC<PackageDetailsDialogProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // 阻止背景点击关闭对话框
+  const handleClose = (event: {}, reason: "backdropClick" | "escapeKeyDown") => {
+    if (reason && reason === "backdropClick") {
+      return;
+    }
+    onClose();
+  };
+
   useEffect(() => {
     if (!open) {
       // 对话框关闭时重置状态
@@ -151,37 +159,37 @@ export const PackageDetailsDialog: React.FC<PackageDetailsDialogProps> = ({
                       </Typography>
                     </Grid>
 
-                    {/* 自定义价格展示 */}
+                    {/* 自定义价格展示 - 分时 */}
                     {packageType === 'time_based' && data?.fixed_linked_config?.fixed_price?.pricing_method === 'custom' && (
                       <>
                         <Grid size={{ xs: 6, sm: 4 }}>
                           <Typography variant="body2" color="text.secondary">尖峰时段价格</Typography>
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.peak || 0} 元/kWh
+                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.peak || 0} 元/MWh
                           </Typography>
                         </Grid>
                         <Grid size={{ xs: 6, sm: 4 }}>
                           <Typography variant="body2" color="text.secondary">峰时段价格</Typography>
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.high || 0} 元/kWh
+                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.high || 0} 元/MWh
                           </Typography>
                         </Grid>
                         <Grid size={{ xs: 6, sm: 4 }}>
                           <Typography variant="body2" color="text.secondary">平时段价格</Typography>
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.flat || 0} 元/kWh
+                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.flat || 0} 元/MWh
                           </Typography>
                         </Grid>
                         <Grid size={{ xs: 6, sm: 4 }}>
                           <Typography variant="body2" color="text.secondary">谷时段价格</Typography>
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.valley || 0} 元/kWh
+                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.valley || 0} 元/MWh
                           </Typography>
                         </Grid>
                         <Grid size={{ xs: 6, sm: 4 }}>
                           <Typography variant="body2" color="text.secondary">深谷时段价格</Typography>
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.deep_valley || 0} 元/kWh
+                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.deep_valley || 0} 元/MWh
                           </Typography>
                         </Grid>
 
@@ -194,6 +202,16 @@ export const PackageDetailsDialog: React.FC<PackageDetailsDialogProps> = ({
                           </Grid>
                         )}
                       </>
+                    )}
+
+                    {/* 自定义价格展示 - 不分时 */}
+                    {packageType === 'non_time_based' && data?.fixed_linked_config?.fixed_price?.pricing_method === 'custom' && (
+                        <Grid size={{ xs: 12 }}>
+                          <Typography variant="body2" color="text.secondary">自定义价格</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>
+                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.all_day || 0} 元/MWh
+                          </Typography>
+                        </Grid>
                     )}
 
                     {/* 参考价展示 */}
@@ -242,7 +260,7 @@ export const PackageDetailsDialog: React.FC<PackageDetailsDialogProps> = ({
                   <Divider sx={{ mb: 2 }} />
                   <Typography variant="body2" color="text.secondary">浮动费用</Typography>
                   <Typography variant="body1" sx={{ mt: 0.5 }}>
-                    {data?.fixed_linked_config?.floating_fee || 0} 元/kWh
+                    {data?.fixed_linked_config?.floating_fee || 0} 元/MWh
                   </Typography>
                 </Paper>
               </Grid>
@@ -296,7 +314,7 @@ export const PackageDetailsDialog: React.FC<PackageDetailsDialogProps> = ({
                   <Divider sx={{ mb: 2 }} />
                   <Typography variant="body2" color="text.secondary">浮动费用</Typography>
                   <Typography variant="body1" sx={{ mt: 0.5 }}>
-                    {data?.price_spread_config?.floating_fee || 0} 元
+                    {data?.price_spread_config?.floating_fee || 0} 元/MWh
                   </Typography>
                 </Paper>
               </Grid>
@@ -398,7 +416,7 @@ export const PackageDetailsDialog: React.FC<PackageDetailsDialogProps> = ({
   );
 
   return (
-    <Dialog open={open} onClose={onClose} fullScreen={isMobile} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={handleClose} fullScreen={isMobile} maxWidth="md" fullWidth>
       <DialogTitle>套餐详情</DialogTitle>
 
       <DialogContent dividers>
