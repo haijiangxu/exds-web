@@ -52,9 +52,13 @@ class PackageService:
                 validation_result = PricingEngine.validate_price_ratio(custom_prices)
                 package.validation = ValidationResult(**validation_result)
 
+        doc_to_insert = package.dict(by_alias=True)
+        # 确保写入数据库的是ObjectId，而不是被Pydantic过早序列化为的字符串
+        doc_to_insert['_id'] = package.id
+
         # 尝试插入，捕获名称重复错误
         try:
-            insert_result = self.collection.insert_one(package.dict(by_alias=True))
+            insert_result = self.collection.insert_one(doc_to_insert)
         except DuplicateKeyError:
             raise ValueError(f"套餐名称已存在: {package.package_name}")
 
