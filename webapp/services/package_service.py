@@ -74,6 +74,8 @@ class PackageService:
             query["package_name"] = {"$regex": filters["keyword"], "$options": "i"}
         if filters.get("package_type"):
             query["package_type"] = filters["package_type"]
+        if filters.get("pricing_mode"):
+            query["pricing_mode"] = filters["pricing_mode"]
         if filters.get("status"):
             query["status"] = filters["status"]
 
@@ -103,7 +105,8 @@ class PackageService:
 
             # Use the list item model for lighter payload
             list_item = RetailPackageListItem(**list_item_data)
-            items.append(list_item.dict(by_alias=True))
+            # 使用 by_alias=False 确保输出 id 而不是 _id
+            items.append(list_item.dict(by_alias=False))
 
         return {
             "total": total,
@@ -200,8 +203,8 @@ class PackageService:
         if not doc:
             raise ValueError(f"套餐不存在: {package_id}")
 
-        # 将ObjectId转换为字符串
-        doc["_id"] = str(doc["_id"])
+        # 将 _id 转换为 id (前端期望的字段名)
+        doc["id"] = str(doc.pop("_id"))
         return doc
 
     def update_package(self, package_id: str, package_data: dict, operator: str) -> dict:

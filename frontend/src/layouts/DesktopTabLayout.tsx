@@ -239,6 +239,7 @@ export const DesktopTabLayout: React.FC = () => {
                                         >
                                             <span>{tab.title}</span>
                                             <IconButton
+                                                component="span"
                                                 size="small"
                                                 onClick={(e) => handleTabClose(e, tab.key)}
                                                 sx={{

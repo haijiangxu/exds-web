@@ -17,6 +17,7 @@ import LoginPage from './pages/LoginPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import PlaceholderPage from './components/PlaceholderPage';
 import GridAgencyPricePage from './pages/GridAgencyPricePage';
+import RetailPackagePage from './pages/RetailPackagePage';
 import { TabProvider } from './contexts/TabContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { DesktopTabLayout } from './layouts/DesktopTabLayout';
@@ -85,7 +86,7 @@ const ResponsiveLayout: React.FC = () => {
                     {/* 基础数据 */}
                     <Route path="basic-data/grid-price" element={<GridAgencyPricePage />} />
                     <Route path="basic-data/tou-definition" element={<PlaceholderPage />} />
-                    <Route path="basic-data/retail-packages" element={<PlaceholderPage />} />
+                    <Route path="basic-data/retail-packages" element={<RetailPackagePage />} />
                     <Route path="basic-data/load-validation" element={<PlaceholderPage />} />
 
                     {/* 系统管理 */}

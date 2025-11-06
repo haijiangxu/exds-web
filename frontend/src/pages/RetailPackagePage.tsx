@@ -9,9 +9,11 @@ import { PageHeader } from '../components/PageHeader';
 import apiClient from '../api/client';
 import { format } from 'date-fns';
 import { PackageEditorDialog } from '../components/PackageEditorDialog';
+import { PackageDetailsDialog } from '../components/PackageDetailsDialog';
 
 interface Package {
-  id: string;
+  id?: string;          // 可选，新后端返回
+  _id?: string;         // 可选，旧后端返回
   package_name: string;
   package_type: 'time_based' | 'non_time_based';
   pricing_mode: 'fixed_linked' | 'price_spread';
@@ -21,6 +23,11 @@ interface Package {
   created_at: string;
   updated_at: string;
 }
+
+// 辅助函数：获取套餐ID（兼容 id 和 _id）
+const getPackageId = (pkg: Package): string => {
+  return pkg.id || pkg._id || '';
+};
 
 const RetailPackagePage: React.FC = () => {
   const [packages, setPackages] = useState<Package[]>([]);
@@ -38,6 +45,10 @@ const RetailPackagePage: React.FC = () => {
   const [isEditorOpen, setEditorOpen] = useState(false);
   const [editPackageId, setEditPackageId] = useState<string | undefined>(undefined);
   const [editorMode, setEditorMode] = useState<'create' | 'edit' | 'copy'>('create');
+
+  // 详情对话框相关状态
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [detailsPackageId, setDetailsPackageId] = useState<string | null>(null);
 
   // 删除功能相关状态
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -163,6 +174,12 @@ const RetailPackagePage: React.FC = () => {
   const handleArchiveCancel = () => {
     setArchiveDialogOpen(false);
     setPackageToArchive(null);
+  };
+
+  // 查看详情处理函数
+  const handleViewDetails = (packageId: string) => {
+    setDetailsPackageId(packageId);
+    setDetailsDialogOpen(true);
   };
 
   const handleEdit = (packageId: string) => {
@@ -367,8 +384,19 @@ const RetailPackagePage: React.FC = () => {
             ) : isMobile ? (
               <Box>
                 {packages.map(pkg => (
-                  <Paper key={pkg.id} variant="outlined" sx={{ p: 2, mb: 2 }}>
-                    <Typography variant="subtitle1" gutterBottom>{pkg.package_name}</Typography>
+                  <Paper key={getPackageId(pkg)} variant="outlined" sx={{ p: 2, mb: 2 }}>
+                    <Typography
+                      variant="subtitle1"
+                      gutterBottom
+                      sx={{
+                        cursor: 'pointer',
+                        color: 'primary.main',
+                        '&:hover': { textDecoration: 'underline' }
+                      }}
+                      onClick={() => handleViewDetails(getPackageId(pkg))}
+                    >
+                      {pkg.package_name}
+                    </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body2" color="text.secondary">类型:</Typography>
                       <Chip label={pkg.package_type === 'time_based' ? '分时段' : '不分时段'} size="small" />
@@ -397,7 +425,7 @@ const RetailPackagePage: React.FC = () => {
                         <span>
                           <IconButton
                             size="small"
-                            onClick={() => handleEdit(pkg.id)}
+                            onClick={() => handleEdit(getPackageId(pkg))}
                             disabled={!canEdit(pkg.status)}
                           >
                             <EditIcon />
@@ -405,7 +433,7 @@ const RetailPackagePage: React.FC = () => {
                         </span>
                       </Tooltip>
                       <Tooltip title="复制套餐">
-                        <IconButton size="small" onClick={() => handleCopy(pkg.id)}>
+                        <IconButton size="small" onClick={() => handleCopy(getPackageId(pkg))}>
                           <ContentCopyIcon />
                         </IconButton>
                       </Tooltip>
@@ -413,7 +441,7 @@ const RetailPackagePage: React.FC = () => {
                         <span>
                           <IconButton
                             size="small"
-                            onClick={() => handleArchive(pkg.id)}
+                            onClick={() => handleArchive(getPackageId(pkg))}
                             disabled={!canArchive(pkg.status)}
                           >
                             <ArchiveIcon />
@@ -425,7 +453,7 @@ const RetailPackagePage: React.FC = () => {
                         <Tooltip title="删除套餐">
                           <IconButton
                             size="small"
-                            onClick={() => handleDeleteClick(pkg.id)}
+                            onClick={() => handleDeleteClick(getPackageId(pkg))}
                             color="error"
                           >
                             <DeleteIcon />
@@ -459,8 +487,19 @@ const RetailPackagePage: React.FC = () => {
                   </TableHead>
                   <TableBody>
                     {packages.map(pkg => (
-                        <TableRow key={pkg.id}>
-                          <TableCell>{pkg.package_name}</TableCell>
+                        <TableRow key={getPackageId(pkg)}>
+                          <TableCell>
+                            <Typography
+                              sx={{
+                                cursor: 'pointer',
+                                color: 'primary.main',
+                                '&:hover': { textDecoration: 'underline' }
+                              }}
+                              onClick={() => handleViewDetails(getPackageId(pkg))}
+                            >
+                              {pkg.package_name}
+                            </Typography>
+                          </TableCell>
                           <TableCell>
                             <Chip
                               label={pkg.package_type === 'time_based' ? '分时段' : '不分时段'}
@@ -491,7 +530,7 @@ const RetailPackagePage: React.FC = () => {
                               <span>
                                 <IconButton
                                   size="small"
-                                  onClick={() => handleEdit(pkg.id)}
+                                  onClick={() => handleEdit(getPackageId(pkg))}
                                   disabled={!canEdit(pkg.status)}
                                 >
                                   <EditIcon />
@@ -499,7 +538,7 @@ const RetailPackagePage: React.FC = () => {
                               </span>
                             </Tooltip>
                             <Tooltip title="复制套餐">
-                              <IconButton size="small" onClick={() => handleCopy(pkg.id)}>
+                              <IconButton size="small" onClick={() => handleCopy(getPackageId(pkg))}>
                                 <ContentCopyIcon />
                               </IconButton>
                             </Tooltip>
@@ -507,7 +546,7 @@ const RetailPackagePage: React.FC = () => {
                               <span>
                                 <IconButton
                                   size="small"
-                                  onClick={() => handleArchive(pkg.id)}
+                                  onClick={() => handleArchive(getPackageId(pkg))}
                                   disabled={!canArchive(pkg.status)}
                                 >
                                   <ArchiveIcon />
@@ -519,7 +558,7 @@ const RetailPackagePage: React.FC = () => {
                               <Tooltip title="删除套餐">
                                 <IconButton
                                   size="small"
-                                  onClick={() => handleDeleteClick(pkg.id)}
+                                  onClick={() => handleDeleteClick(getPackageId(pkg))}
                                   color="error"
                                 >
                                   <DeleteIcon />
@@ -598,6 +637,24 @@ const RetailPackagePage: React.FC = () => {
               </Button>
             </DialogActions>
           </Dialog>
+
+          {/* 详情对话框 */}
+          <PackageDetailsDialog
+            open={detailsDialogOpen}
+            packageId={detailsPackageId}
+            onClose={() => {
+              setDetailsDialogOpen(false);
+              setDetailsPackageId(null);
+            }}
+            onEdit={(id) => {
+              setDetailsDialogOpen(false);
+              handleEdit(id);
+            }}
+            onCopy={(id) => {
+              setDetailsDialogOpen(false);
+              handleCopy(id);
+            }}
+          />
 
           {/* 全局 Snackbar 反馈 */}
           <Snackbar

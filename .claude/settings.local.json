@@ -4,7 +4,8 @@
       "Bash(npm search:*)",
       "Bash(npm install:*)",
       "Bash(python scripts/test_serialization2.py:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
