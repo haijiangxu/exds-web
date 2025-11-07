@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from typing import Optional
 
-from webapp.models.retail_package import RetailPackage, PackageListResponse, CustomPrices
+from webapp.models.retail_package import RetailPackage, PackageListResponse
 from webapp.services.package_service import PackageService
 from webapp.services.pricing_engine import PricingEngine
 from webapp.tools.mongo import DATABASE

@@ -17,9 +17,8 @@ interface Package {
   _id?: string;         // 可选，旧后端返回
   package_name: string;
   package_type: 'time_based' | 'non_time_based';
+  is_green_power: boolean;
   pricing_mode: 'fixed_linked' | 'price_spread';
-  has_green_power: boolean;
-  has_price_cap: boolean;
   status: 'draft' | 'active' | 'archived';
   created_at: string;
   updated_at: string;
@@ -56,6 +55,7 @@ const RetailPackagePage: React.FC = () => {
   const [filters, setFilters] = useState({
     keyword: '',
     package_type: '',
+    is_green_power: '',  // 绿电筛选
     pricing_mode: '', // Added pricing_mode filter
     status: ''
   });
@@ -90,7 +90,7 @@ const RetailPackagePage: React.FC = () => {
     open: boolean;
     message: string;
     severity: 'success' | 'error' | 'info' | 'warning';
-  }>({
+  }>({ 
     open: false,
     message: '',
     severity: 'success'
@@ -170,6 +170,7 @@ const RetailPackagePage: React.FC = () => {
     setFilters({
       keyword: '',
       package_type: '',
+      is_green_power: '',
       pricing_mode: '',
       status: ''
     });
@@ -356,6 +357,19 @@ const RetailPackagePage: React.FC = () => {
               </Select>
           </FormControl>
           <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
+              <InputLabel>绿电套餐</InputLabel>
+              <Select
+                  name="is_green_power"
+                  value={filters.is_green_power}
+                  onChange={handleFilterChange}
+                  label="绿电套餐"
+              >
+                  <MenuItem value="">所有</MenuItem>
+                  <MenuItem value="true">是</MenuItem>
+                  <MenuItem value="false">否</MenuItem>
+              </Select>
+          </FormControl>
+          <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
               <InputLabel>定价模式</InputLabel>
               <Select
                   name="pricing_mode"
@@ -415,8 +429,8 @@ const RetailPackagePage: React.FC = () => {
                       <TableRow>
                         <TableCell>套餐名称</TableCell>
                         <TableCell>套餐类型</TableCell>
+                        <TableCell>绿电套餐</TableCell>
                         <TableCell>定价模式</TableCell>
-                        <TableCell>附加套餐</TableCell>
                         <TableCell>状态</TableCell>
                         <TableCell>创建时间</TableCell>
                         <TableCell align="right">操作</TableCell>
@@ -454,15 +468,16 @@ const RetailPackagePage: React.FC = () => {
                       <Chip label={pkg.package_type === 'time_based' ? '分时段' : '不分时段'} size="small" />
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" color="text.secondary">定价模式:</Typography>
-                      <Chip label={pkg.pricing_mode === 'fixed_linked' ? '固定+联动' : '价差分成'} size="small" color="primary" />
+                      <Typography variant="body2" color="text.secondary">绿电套餐:</Typography>
+                      {pkg.is_green_power ? (
+                        <Chip label="是" size="small" color="success" />
+                      ) : (
+                        <Chip label="否" size="small" variant="outlined" />
+                      )}
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" color="text.secondary">附加套餐:</Typography>
-                      <Box>
-                        {pkg.has_green_power && <Chip label="绿电" size="small" color="success" sx={{ mr: 0.5 }} />}
-                        {pkg.has_price_cap && <Chip label="封顶" size="small" color="warning" />}
-                      </Box>
+                      <Typography variant="body2" color="text.secondary">定价模式:</Typography>
+                      <Chip label={pkg.pricing_mode === 'fixed_linked' ? '固定+联动' : '价差分成'} size="small" color="primary" />
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body2" color="text.secondary">状态:</Typography>
@@ -540,8 +555,8 @@ const RetailPackagePage: React.FC = () => {
                     <TableRow>
                       <TableCell>套餐名称</TableCell>
                       <TableCell>套餐类型</TableCell>
+                      <TableCell>绿电套餐</TableCell>
                       <TableCell>定价模式</TableCell>
-                      <TableCell>附加套餐</TableCell>
                       <TableCell>状态</TableCell>
                       <TableCell>创建时间</TableCell>
                       <TableCell align="right">操作</TableCell>
@@ -569,15 +584,18 @@ const RetailPackagePage: React.FC = () => {
                             />
                           </TableCell>
                           <TableCell>
+                            {pkg.is_green_power ? (
+                              <Chip label="是" size="small" color="success" />
+                            ) : (
+                              <Chip label="否" size="small" variant="outlined" />
+                            )}
+                          </TableCell>
+                          <TableCell>
                             <Chip
                               label={pkg.pricing_mode === 'fixed_linked' ? '固定+联动' : '价差分成'}
                               size="small"
                               color="primary"
                             />
-                          </TableCell>
-                          <TableCell>
-                            {pkg.has_green_power && <Chip label="绿电" size="small" color="success" />}
-                            {pkg.has_price_cap && <Chip label="封顶" size="small" color="warning" />}
                           </TableCell>
                           <TableCell>
                             <Chip

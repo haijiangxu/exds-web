@@ -5,7 +5,16 @@
       "Bash(npm install:*)",
       "Bash(python scripts/test_serialization2.py:*)",
       "Bash(curl:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(python scripts/init_pricing_models.py:*)",
+      "Bash(python scripts/test_pricing_models.py:*)",
+      "Bash(python scripts/test_pricing_api.py:*)",
+      "Bash(pip install:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(python:*)",
+      "Bash(timeout /t 5)",
+      "Bash(nul)"
     ],
     "deny": [],
     "ask": []

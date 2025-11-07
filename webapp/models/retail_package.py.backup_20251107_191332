@@ -33,7 +33,42 @@ class BaseMongoModel(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
 
 
-# Models based on design document (v4 重构后)
+# Models based on design document
+class CustomPrices(BaseModel):
+    peak: float = Field(..., description="尖峰时段价格")
+    high: float = Field(..., description="峰时段价格")
+    flat: float = Field(..., description="平时段价格")
+    valley: float = Field(..., description="谷时段价格")
+    deep_valley: float = Field(..., description="深谷时段价格")
+
+class FixedPriceConfig(BaseModel):
+    pricing_method: Literal["custom", "reference"]
+    custom_prices: Optional[CustomPrices] = None
+    reference_target: Optional[Literal["grid_agency_price", "market_monthly_avg"]] = None
+    reference_prices: Optional[dict] = None # To store snapshot of referenced prices
+
+class LinkedPriceConfig(BaseModel):
+    ratio: float = Field(..., description="联动比例 α (0.1 ~ 0.2)")
+    target: Literal["day_ahead_avg", "real_time_avg"]
+
+class FixedLinkedConfig(BaseModel):
+    fixed_price: FixedPriceConfig
+    linked_price: LinkedPriceConfig
+    floating_fee: float = Field(default=0, description="浮动费用 (元/kWh)")
+
+class PriceSpreadReferencePrice(BaseModel):
+    target: Literal["market_monthly_avg", "grid_agency", "wholesale_settlement"]
+    value: Optional[float] = None
+
+class PriceSpreadSharing(BaseModel):
+    agreed_spread: float = Field(..., description="约定价差（元/MWh）")
+    sharing_ratio: float = Field(..., description="分成比例 k (0 ~ 1)")
+
+class PriceSpreadConfig(BaseModel):
+    reference_price: PriceSpreadReferencePrice
+    price_spread: PriceSpreadSharing
+    floating_fee: float = Field(default=0, description="浮动费用（元）")
+
 class GreenPowerConfig(BaseModel):
     """绿色电力配置"""
     monthly_env_value: float = Field(0, description="月度绿色电力环境价值（元/MWh）")
@@ -49,26 +84,21 @@ class ValidationResult(BaseModel):
 
 
 class RetailPackage(BaseMongoModel):
-    # 基本信息
     package_name: str = Field(...)
     package_description: Optional[str] = None
     package_type: Literal["time_based", "non_time_based"]
-    model_code: str = Field(..., description="定价模型代码，如 'fixed_linked_fee_non_time'")
-
-    # 价格配置（根据模型动态使用，扁平化字典结构）
-    pricing_config: dict = Field(default_factory=dict, description="统一的定价配置字典")
-
-    # 绿电配置
     is_green_power: bool = False
+    pricing_mode: Literal["fixed_linked", "price_spread"]
+
+    fixed_linked_config: Optional[FixedLinkedConfig] = None
+    price_spread_config: Optional[PriceSpreadConfig] = None
     green_power_config: Optional[GreenPowerConfig] = None
 
-    # 状态和元数据
     status: Literal["draft", "active", "archived"] = "draft"
 
     # 校验信息
     validation: Optional[ValidationResult] = None
 
-    # 审计字段
     created_by: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -81,8 +111,8 @@ class RetailPackage(BaseMongoModel):
 class RetailPackageListItem(BaseMongoModel):
     package_name: str
     package_type: Literal["time_based", "non_time_based"]
-    model_code: str  # 定价模型代码
     is_green_power: bool = False
+    pricing_mode: Literal["fixed_linked", "price_spread"]
     status: Literal["draft", "active", "archived"]
     created_at: datetime
     updated_at: datetime

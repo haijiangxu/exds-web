@@ -83,6 +83,16 @@ export const PackageDetailsDialog: React.FC<PackageDetailsDialogProps> = ({
           </Box>
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
+          <Typography variant="body2" color="text.secondary">绿电套餐</Typography>
+          <Box sx={{ mt: 0.5 }}>
+            {data?.is_green_power ? (
+              <Chip label="是" size="small" color="success" />
+            ) : (
+              <Chip label="否" size="small" variant="outlined" />
+            )}
+          </Box>
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Typography variant="body2" color="text.secondary">状态</Typography>
           <Box sx={{ mt: 0.5 }}>
             <Chip
@@ -124,294 +134,93 @@ export const PackageDetailsDialog: React.FC<PackageDetailsDialogProps> = ({
     </Paper>
   );
 
-  // 渲染定价模式卡片
+  // 渲染定价配置卡片（临时版本 - 将在会话7中完整重构）
   const renderPricingMode = () => {
-    const pricingMode = data?.pricing_mode;
-    const packageType = data?.package_type;
+    const modelCode = data?.model_code;
+    const pricingConfig = data?.pricing_config;
 
     return (
       <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
-        <Typography variant="h6" gutterBottom>定价模式</Typography>
+        <Typography variant="h6" gutterBottom>定价配置</Typography>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          【临时展示】完整的定价配置展示将在会话7中实现
+        </Alert>
         <Grid container spacing={2}>
           <Grid size={{ xs: 12 }}>
-            <Typography variant="body2" color="text.secondary">定价模式</Typography>
+            <Typography variant="body2" color="text.secondary">定价模型代码</Typography>
             <Box sx={{ mt: 0.5 }}>
               <Chip
-                label={pricingMode === 'fixed_linked' ? '固定价格 + 联动价格 + 浮动费用' : '价差分成 + 浮动费用'}
+                label={modelCode || '未知模型'}
                 size="small"
                 color="primary"
               />
             </Box>
           </Grid>
 
-          {/* 固定+联动定价模式展示 */}
-          {pricingMode === 'fixed_linked' && (
-            <>
-              <Grid size={{ xs: 12 }}>
-                <Paper variant="outlined" sx={{ p: 2, mt: 1 }}>
-                  <Typography variant="subtitle1" gutterBottom>固定价格 (Fixed Price)</Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Grid container spacing={2}>
-                    <Grid size={{ xs: 12 }}>
-                      <Typography variant="body2" color="text.secondary">定价方式</Typography>
-                      <Typography variant="body1" sx={{ mt: 0.5 }}>
-                        {data?.fixed_linked_config?.fixed_price?.pricing_method === 'custom' ? '自定义价格' : '按参考价'}
-                      </Typography>
-                    </Grid>
-
-                    {/* 自定义价格展示 - 分时 */}
-                    {packageType === 'time_based' && data?.fixed_linked_config?.fixed_price?.pricing_method === 'custom' && (
-                      <>
-                        <Grid size={{ xs: 6, sm: 4 }}>
-                          <Typography variant="body2" color="text.secondary">尖峰时段价格</Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.peak || 0} 元/MWh
-                          </Typography>
-                        </Grid>
-                        <Grid size={{ xs: 6, sm: 4 }}>
-                          <Typography variant="body2" color="text.secondary">峰时段价格</Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.high || 0} 元/MWh
-                          </Typography>
-                        </Grid>
-                        <Grid size={{ xs: 6, sm: 4 }}>
-                          <Typography variant="body2" color="text.secondary">平时段价格</Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.flat || 0} 元/MWh
-                          </Typography>
-                        </Grid>
-                        <Grid size={{ xs: 6, sm: 4 }}>
-                          <Typography variant="body2" color="text.secondary">谷时段价格</Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.valley || 0} 元/MWh
-                          </Typography>
-                        </Grid>
-                        <Grid size={{ xs: 6, sm: 4 }}>
-                          <Typography variant="body2" color="text.secondary">深谷时段价格</Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.deep_valley || 0} 元/MWh
-                          </Typography>
-                        </Grid>
-
-                        {/* 价格比例校验结果展示 */}
-                        {data?.validation && !data.validation.price_ratio_compliant && (
-                          <Grid size={{ xs: 12 }}>
-                            <Alert severity="warning" sx={{ mt: 1 }}>
-                              当前价格比例不满足463号文要求，结算时将自动调整为标准比例 (1.6:1:0.4:0.3)
-                            </Alert>
-                          </Grid>
-                        )}
-                      </>
-                    )}
-
-                    {/* 自定义价格展示 - 不分时 */}
-                    {packageType === 'non_time_based' && data?.fixed_linked_config?.fixed_price?.pricing_method === 'custom' && (
-                        <Grid size={{ xs: 12 }}>
-                          <Typography variant="body2" color="text.secondary">自定义价格</Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {data?.fixed_linked_config?.fixed_price?.custom_prices?.all_day || 0} 元/MWh
-                          </Typography>
-                        </Grid>
-                    )}
-
-                    {/* 参考价展示 */}
-                    {data?.fixed_linked_config?.fixed_price?.pricing_method === 'reference' && (
-                      <Grid size={{ xs: 12 }}>
-                        <Typography variant="body2" color="text.secondary">参考标的</Typography>
-                        <Typography variant="body1" sx={{ mt: 0.5 }}>
-                          {data?.fixed_linked_config?.fixed_price?.reference_target === 'grid_agency_price'
-                            ? '电网代理购电价格(分时)'
-                            : '电力市场月度交易均价(分时)'}
-                        </Typography>
-                      </Grid>
-                    )}
-                  </Grid>
-                </Paper>
-              </Grid>
-
-              {/* 联动价格展示 */}
-              <Grid size={{ xs: 12 }}>
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom>联动价格 (Linked Price)</Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                      <Typography variant="body2" color="text.secondary">联动比例 (α)</Typography>
-                      <Typography variant="body1" sx={{ mt: 0.5 }}>
-                        {data?.fixed_linked_config?.linked_price?.ratio || 0}%
-                      </Typography>
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                      <Typography variant="body2" color="text.secondary">联动标的</Typography>
-                      <Typography variant="body1" sx={{ mt: 0.5 }}>
-                        {data?.fixed_linked_config?.linked_price?.target === 'day_ahead_avg'
-                          ? '日前市场均价(分时)'
-                          : '实时市场均价(分时)'}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Paper>
-              </Grid>
-
-              {/* 浮动费用展示 */}
-              <Grid size={{ xs: 12 }}>
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom>浮动费用 (Floating Fee)</Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Typography variant="body2" color="text.secondary">浮动费用</Typography>
-                  <Typography variant="body1" sx={{ mt: 0.5 }}>
-                    {data?.fixed_linked_config?.floating_fee || 0} 元/MWh
-                  </Typography>
-                </Paper>
-              </Grid>
-            </>
-          )}
-
-          {/* 价差分成定价模式展示 */}
-          {pricingMode === 'price_spread' && (
-            <>
-              <Grid size={{ xs: 12 }}>
-                <Paper variant="outlined" sx={{ p: 2, mt: 1 }}>
-                  <Typography variant="subtitle1" gutterBottom>参考价 (Reference Price)</Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Typography variant="body2" color="text.secondary">参考标的</Typography>
-                  <Typography variant="body1" sx={{ mt: 0.5 }}>
-                    {data?.price_spread_config?.reference_price?.target === 'market_monthly_avg'
-                      ? '电力市场月度交易均价'
-                      : data?.price_spread_config?.reference_price?.target === 'grid_agency'
-                        ? '电网代理购电价格'
-                        : '批发侧结算均价'}
-                  </Typography>
-                </Paper>
-              </Grid>
-
-              {/* 价差分成展示 */}
-              <Grid size={{ xs: 12 }}>
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom>价差分成 (Price-spread Sharing)</Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                      <Typography variant="body2" color="text.secondary">约定价差</Typography>
-                      <Typography variant="body1" sx={{ mt: 0.5 }}>
-                        {data?.price_spread_config?.price_spread?.agreed_spread || 0} 元/MWh
-                      </Typography>
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                      <Typography variant="body2" color="text.secondary">分成比例 (k)</Typography>
-                      <Typography variant="body1" sx={{ mt: 0.5 }}>
-                        {data?.price_spread_config?.price_spread?.sharing_ratio || 0}%
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Paper>
-              </Grid>
-
-              {/* 浮动费用展示 */}
-              <Grid size={{ xs: 12 }}>
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom>浮动费用 (Floating Fee)</Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Typography variant="body2" color="text.secondary">浮动费用</Typography>
-                  <Typography variant="body1" sx={{ mt: 0.5 }}>
-                    {data?.price_spread_config?.floating_fee || 0} 元/MWh
-                  </Typography>
-                </Paper>
-              </Grid>
-            </>
+          {pricingConfig && (
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="body2" color="text.secondary">配置详情（JSON）</Typography>
+              <Paper variant="outlined" sx={{ p: 1, mt: 0.5, bgcolor: 'grey.50' }}>
+                <Typography variant="caption" component="pre" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+                  {JSON.stringify(pricingConfig, null, 2)}
+                </Typography>
+              </Paper>
+            </Grid>
           )}
         </Grid>
       </Paper>
     );
   };
 
-  // 渲染附加条款卡片
-  const renderAdditionalTerms = () => (
-    <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
-      <Typography variant="h6" gutterBottom>附加条款</Typography>
-      <Grid container spacing={2}>
-        {/* 绿色电力套餐 */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Typography variant="subtitle1">绿色电力套餐</Typography>
-              <Chip
-                label={data?.additional_terms?.green_power?.enabled ? '已启用' : '未启用'}
-                size="small"
-                color={data?.additional_terms?.green_power?.enabled ? 'success' : 'default'}
-                sx={{ ml: 1 }}
-              />
-            </Box>
-            {data?.additional_terms?.green_power?.enabled && (
-              <Box sx={{ mt: 2 }}>
-                <Grid container spacing={1}>
-                  <Grid size={{ xs: 12 }}>
-                    <Typography variant="body2" color="text.secondary">月度绿色电力环境价值</Typography>
-                    <Typography variant="body1" sx={{ mt: 0.5 }}>
-                      {data?.additional_terms?.green_power?.monthly_env_value || 0} 元/MWh
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12 }}>
-                    <Typography variant="body2" color="text.secondary">偏差补偿比例</Typography>
-                    <Typography variant="body1" sx={{ mt: 0.5 }}>
-                      {data?.additional_terms?.green_power?.deviation_compensation_ratio || 0}%
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', display: 'block', mt: 1 }}>
-                      双方用电量与约定电量偏差时，将按此比例进行补偿
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
-          </Paper>
-        </Grid>
+  // 渲染绿电配置卡片
+  const renderGreenPowerConfig = () => {
+    if (!data?.is_green_power || !data?.green_power_config) return null;
 
-        {/* 封顶价格条款 */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Typography variant="subtitle1">封顶价格条款</Typography>
-              <Chip
-                label={data?.additional_terms?.price_cap?.enabled ? '已启用' : '未启用'}
-                size="small"
-                color={data?.additional_terms?.price_cap?.enabled ? 'warning' : 'default'}
-                sx={{ ml: 1 }}
-              />
-            </Box>
-            {data?.additional_terms?.price_cap?.enabled && (
-              <Box sx={{ mt: 2 }}>
-                <Grid container spacing={1}>
-                  <Grid size={{ xs: 12 }}>
-                    <Typography variant="body2" color="text.secondary">参考价格标的</Typography>
-                    <Typography variant="body1" sx={{ mt: 0.5 }}>
-                      电网代理购电发布的电力市场当月平均上网电价
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12 }}>
-                    <Typography variant="body2" color="text.secondary">非尖峰月份上浮</Typography>
-                    <Typography variant="body1" sx={{ mt: 0.5 }}>
-                      {data?.additional_terms?.price_cap?.non_peak_markup || 0}%
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12 }}>
-                    <Typography variant="body2" color="text.secondary">尖峰月份上浮</Typography>
-                    <Typography variant="body1" sx={{ mt: 0.5 }}>
-                      {data?.additional_terms?.price_cap?.peak_markup || 0}%
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', display: 'block', mt: 1 }}>
-                      结算时，若套餐结算价高于封顶价，将按封顶价结算
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
-          </Paper>
+    return (
+      <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
+        <Typography variant="h6" gutterBottom>绿色电力配置</Typography>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Typography variant="body2" color="text.secondary">月度绿色电力环境价值</Typography>
+            <Typography variant="body1" sx={{ mt: 0.5 }}>
+              {data?.green_power_config?.monthly_env_value || 0} 元/MWh
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Typography variant="body2" color="text.secondary">偏差补偿比例</Typography>
+            <Typography variant="body1" sx={{ mt: 0.5 }}>
+              {data?.green_power_config?.deviation_compensation_ratio || 0}%
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', display: 'block', mt: 1 }}>
+              双方用电量与约定电量偏差时，将按此比例进行补偿
+            </Typography>
+          </Grid>
         </Grid>
-      </Grid>
+      </Paper>
+    );
+  };
+
+  // 渲染价格说明卡片
+  const renderPriceDescription = () => (
+    <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
+      <Typography variant="h6" gutterBottom>价格说明</Typography>
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Typography variant="subtitle2" gutterBottom>
+          封顶价格条款
+        </Typography>
+
+        <Alert severity="info" sx={{ mt: 1 }}>
+          <Typography variant="body2">
+            零售用户月度结算均价封顶，零售用户月度结算均价对比参考价（按照电网代理购电发布的电力市场月度交易均价(当月平均上网电价)）上浮不超过5%(非尖峰月份）、上浮不超过10%（尖峰月份），若零售套餐结算价格高于封顶价格时，按照封顶价格结算。
+          </Typography>
+        </Alert>
+
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+          注：此条款为系统默认条款，不可编辑
+        </Typography>
+      </Paper>
     </Paper>
   );
 
@@ -430,7 +239,8 @@ export const PackageDetailsDialog: React.FC<PackageDetailsDialogProps> = ({
           <>
             {renderBasicInfo()}
             {renderPricingMode()}
-            {renderAdditionalTerms()}
+            {renderGreenPowerConfig()}
+            {renderPriceDescription()}
           </>
         ) : null}
       </DialogContent>

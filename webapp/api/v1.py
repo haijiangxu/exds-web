@@ -13,6 +13,7 @@ import json
 from webapp.api import v1_retail_packages
 from webapp.services.package_service import PackageService
 from webapp.services.pricing_engine import PricingEngine
+from webapp.services.pricing_model_service import pricing_model_service
 
 # 创建一个API路由器
 router = APIRouter(prefix="/api/v1", tags=["v1"])
@@ -304,6 +305,90 @@ def get_sgcc_prices(page: int = 1, pageSize: int = 10):
     except Exception as e:
         print(f"[DEBUG] Error in get_sgcc_prices: {e}")
         raise HTTPException(status_code=500, detail=f"获取国网代购电价数据时出错: {str(e)}")
+
+# ##############################################################################
+# 定价模型API (Pricing Model APIs)
+# ##############################################################################
+
+@router.get("/pricing-models", summary="获取定价模型列表")
+def get_pricing_models(
+    package_type: str = Query(None, description="套餐类型：time_based/non_time_based"),
+    enabled: bool = Query(None, description="是否启用")
+):
+    """
+    获取定价模型列表
+
+    Args:
+        package_type: 套餐类型筛选（可选）
+        enabled: 是否启用（可选）
+
+    Returns:
+        定价模型列表
+    """
+    try:
+        models = pricing_model_service.list_pricing_models(
+            package_type=package_type,
+            enabled=enabled
+        )
+        return models
+    except Exception as e:
+        print(f"[DEBUG] Error in get_pricing_models: {e}")
+        raise HTTPException(status_code=500, detail=f"获取定价模型列表时出错: {str(e)}")
+
+
+@router.get("/pricing-models/{model_code}", summary="获取定价模型详情")
+def get_pricing_model(model_code: str):
+    """
+    获取单个定价模型的详细信息
+
+    Args:
+        model_code: 模型代码
+
+    Returns:
+        定价模型详情
+    """
+    try:
+        model = pricing_model_service.get_pricing_model(model_code)
+
+        if not model:
+            raise HTTPException(status_code=404, detail=f"未找到模型: {model_code}")
+
+        return model
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[DEBUG] Error in get_pricing_model: {e}")
+        raise HTTPException(status_code=500, detail=f"获取定价模型详情时出错: {str(e)}")
+
+
+@router.post("/pricing-models/{model_code}/validate", summary="验证定价配置")
+def validate_pricing_config(model_code: str, data: dict = Body(...)):
+    """
+    验证定价配置是否符合规则
+
+    Args:
+        model_code: 模型代码
+        data: 包含 pricing_config 的字典
+
+    Returns:
+        校验结果 {"valid": bool, "errors": [], "warnings": []}
+    """
+    try:
+        pricing_config = data.get("pricing_config", {})
+
+        result = pricing_model_service.validate_pricing_config(
+            model_code=model_code,
+            config=pricing_config
+        )
+
+        return result
+    except Exception as e:
+        print(f"[DEBUG] Error in validate_pricing_config: {e}")
+        raise HTTPException(status_code=500, detail=f"验证定价配置时出错: {str(e)}")
+
+# ##############################################################################
+# 零售套餐价格计算API (Retail Package Price Calculation APIs)
+# ##############################################################################
 
 @router.post("/retail-packages/calculate-price", summary="计算套餐价格")
 async def calculate_package_price(data: dict = Body(...)):

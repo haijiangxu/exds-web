@@ -2,13 +2,36 @@ import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, CircularProgress,
   useMediaQuery, useTheme, Paper, Typography, Grid, TextField, FormControl,
-  FormLabel, RadioGroup, FormControlLabel, Radio, InputLabel, Select,
-  MenuItem, Switch, FormHelperText, Alert
+  FormLabel, RadioGroup, FormControlLabel, Radio, Switch, FormHelperText,
+  Alert, Tooltip, IconButton, Select, MenuItem, InputLabel
 } from '@mui/material';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { usePackageForm, PackageFormData } from '../hooks/usePackageForm';
 import { Control, Controller } from 'react-hook-form';
+import apiClient from '../api/client';
+import { PricingConfigForm } from './pricing/PricingConfigForm';
 
-import apiClient from '../api/client'; // Added apiClient
+// 绿电提示文本
+const GREEN_POWER_HINT = `1. 套餐选择开启绿电合同，用户下单时需录入绿电合同电量，售电公司在批发侧成交的绿电合同电量按此电量等比例分摊给签署了绿电套餐的零售用户。
+2. 按照绿电交易"优先交易、优先出清、优先执行、优先结算"原则，绿电交易的电能量优先常规交易电量能结算。
+3. 售电公司通过批侧成交的绿电合同的电能量价、环境价值直接传递给零售用户，零售用户分时绿电结算量、结算价根据其用电量、各绿电合同电量、各合同对应电厂上网电量三者取小确定。`;
+
+// 绿电警告文字
+const GREEN_POWER_WARNING = "按照所代理零售用户月度零售套餐约定的绿色电力环境价值从高到低进行排序，交易电量优先分配环境价值高的零售用户";
+
+// 封顶价格说明
+const PRICE_CAP_DESCRIPTION = "零售用户月度结算均价封顶，零售用户月度结算均价对比参考价（按照电网代理购电发布的电力市场月度交易均价(当月平均上网电价)）上浮不超过5%(非尖峰月份）、上浮不超过10%（尖峰月份），若零售套餐结算价格高于封顶价格时，按照封顶价格结算。";
+
+// 定价模型接口
+interface PricingModel {
+  model_code: string;
+  display_name: string;
+  package_type: 'time_based' | 'non_time_based';
+  pricing_mode: string;
+  floating_type: string;
+  formula?: string;
+  description?: string;
+}
 
 interface PackageEditorDialogProps {
   open: boolean;
@@ -22,25 +45,30 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
   open, packageId, mode, onClose, onSave
 }) => {
 
-  const { control, handleSubmit, watch, reset, setError, clearErrors, formState: { errors } } = usePackageForm();
-  const [loadingPackageData, setLoadingPackageData] = useState(false); // New state for loading
-  const [saving, setSaving] = useState(false); // 新增：保存状态
+  const { control, handleSubmit, watch, reset, setError, clearErrors, setValue } = usePackageForm();
+  const [loadingPackageData, setLoadingPackageData] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [pricingModels, setPricingModels] = useState<PricingModel[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  const packageType = watch('package_type');
+  const modelCode = watch('model_code');
+  const isGreenPower = watch('is_green_power');
 
   // 阻止背景点击关闭对话框
   const handleClose = (event: {}, reason: "backdropClick" | "escapeKeyDown") => {
-    // 在保存期间，禁用所有关闭操作
     if (saving) return;
-
     if (reason && reason === "backdropClick") {
       return;
     }
     onClose();
   };
 
+  // 加载套餐数据（编辑/复制模式）
   useEffect(() => {
     if (open) {
       if (mode === 'create') {
-        reset(); // Reset to default values for create mode
+        reset();
       } else if (packageId) {
         setLoadingPackageData(true);
         apiClient.get(`/api/v1/retail-packages/${packageId}`)
@@ -48,411 +76,131 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
             let fetchedData = response.data;
             if (mode === 'copy') {
               fetchedData.package_name = fetchedData.package_name + '_副本';
-              // 当复制时，删除原始ID，确保后端能创建新实体
               delete fetchedData.id;
               delete fetchedData._id;
             }
-            reset(fetchedData); // Pre-fill form with fetched or modified data
+            reset(fetchedData);
           })
           .catch(error => {
             console.error("Failed to fetch package data for editing/copying", error);
-            // Optionally show an error message to the user
-            onClose(); // Close dialog on error
+            onClose();
           })
           .finally(() => {
             setLoadingPackageData(false);
           });
       }
     } else {
-      // When dialog closes, reset form
       reset();
     }
-  }, [open, packageId, mode, reset, onClose]); // Added onClose to dependency array
+  }, [open, packageId, mode, reset, onClose]);
 
-  // Helper render functions
-  const renderBasicInfoSection = (control: Control<PackageFormData>) => (
-    <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
-      <Typography variant="h6" gutterBottom>基本信息</Typography>
-      <Grid container spacing={{ xs: 1, sm: 2 }}>
-        <Grid size={{ xs: 12 }}>
-          <Controller
-            name="package_name"
-            control={control}
-            rules={{ required: '套餐名称不能为空' }}
-            render={({ field, fieldState: { error } }) => (
-              <TextField
-                {...field}
-                label="套餐名称"
-                fullWidth
-                required
-                error={!!error}
-                helperText={error?.message}
-                onChange={(e) => {
-                  field.onChange(e);
-                  clearErrors('package_name'); // 输入时清除错误
-                }}
-              />
-            )}
-          />
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <FormControl component="fieldset">
-            <FormLabel component="legend">套餐类型</FormLabel>
-            <Controller
-              name="package_type"
-              control={control}
-              render={({ field }) => (
-                <RadioGroup {...field} row>
-                  <FormControlLabel value="time_based" control={<Radio />} label="分时段零售套餐" />
-                  <FormControlLabel value="non_time_based" control={<Radio />} label="不分时段零售套餐" />
-                </RadioGroup>
-              )}
-            />
-          </FormControl>
-        </Grid>
-      </Grid>
-    </Paper>
-  );
+  // 根据 package_type 加载可用的定价模型列表
+  useEffect(() => {
+    if (!packageType) return;
 
-  const renderPricingModeSection = (control: Control<PackageFormData>) => {
-    const pricingMode = watch('pricing_mode');
-    const packageType = watch('package_type');
-    const fixedPricingMethod = watch('fixed_linked_config.fixed_price.pricing_method');
+    setLoadingModels(true);
+    apiClient.get(`/api/v1/pricing-models?package_type=${packageType}`)
+      .then(response => {
+        setPricingModels(response.data);
+        // 如果当前没有选中模型，且有可用模型，自动选中第一个
+        if (!modelCode && response.data.length > 0) {
+          setValue('model_code', response.data[0].model_code);
+        }
+      })
+      .catch(error => {
+        console.error("Failed to fetch pricing models", error);
+        setPricingModels([]);
+      })
+      .finally(() => {
+        setLoadingModels(false);
+      });
+  }, [packageType, setValue]);
 
-    // 监听自定义价格变化
-    const customPrices = watch('fixed_linked_config.fixed_price.custom_prices');
+  // 当 package_type 改变时，清空 model_code 和 pricing_config
+  useEffect(() => {
+    if (mode === 'create') {
+      setValue('model_code', '');
+      setValue('pricing_config', {});
+    }
+  }, [packageType, mode, setValue]);
 
-    // 计算价格比例并判断是否符合标准
-    const calculateRatioCompliance = () => {
-      if (!customPrices || !customPrices.flat || customPrices.flat === 0) {
-        return { compliant: true, ratios: null };
-      }
-
-      const ratios = {
-        high_to_flat: customPrices.high / customPrices.flat,
-        valley_to_flat: customPrices.valley / customPrices.flat,
-        deep_valley_to_flat: customPrices.deep_valley / customPrices.flat,
-      };
-
-      // 标准比例：1.6:1:0.4:0.3
-      const STANDARD_RATIOS = {
-        high_to_flat: 1.6,
-        valley_to_flat: 0.4,
-        deep_valley_to_flat: 0.3,
-      };
-
-      // 判断是否符合（允许0.01的误差）
-      const compliant =
-        Math.abs(ratios.high_to_flat - STANDARD_RATIOS.high_to_flat) < 0.01 &&
-        Math.abs(ratios.valley_to_flat - STANDARD_RATIOS.valley_to_flat) < 0.01 &&
-        Math.abs(ratios.deep_valley_to_flat - STANDARD_RATIOS.deep_valley_to_flat) < 0.01;
-
-      return { compliant, ratios };
-    };
-
-    const { compliant, ratios } = calculateRatioCompliance();
-
+  // 渲染基本信息区
+  const renderBasicInfoSection = (control: Control<PackageFormData>) => {
     return (
       <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
-        <Typography variant="h6" gutterBottom>定价模式</Typography>
+        <Typography variant="h6" gutterBottom>基本信息</Typography>
         <Grid container spacing={{ xs: 1, sm: 2 }}>
           <Grid size={{ xs: 12 }}>
+            <Controller
+              name="package_name"
+              control={control}
+              rules={{ required: '套餐名称不能为空' }}
+              render={({ field, fieldState: { error } }) => (
+                <TextField
+                  {...field}
+                  label="套餐名称"
+                  fullWidth
+                  required
+                  error={!!error}
+                  helperText={error?.message}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    clearErrors('package_name');
+                  }}
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
             <FormControl component="fieldset">
-              <FormLabel component="legend">选择定价模式</FormLabel>
+              <FormLabel component="legend">套餐类型（分时维度）</FormLabel>
               <Controller
-                name="pricing_mode"
+                name="package_type"
                 control={control}
                 render={({ field }) => (
                   <RadioGroup {...field} row>
-                    <FormControlLabel value="fixed_linked" control={<Radio />} label="固定价格 + 联动价格 + 浮动费用" />
-                    <FormControlLabel value="price_spread" control={<Radio />} label="价差分成 + 浮动费用" />
+                    <FormControlLabel value="time_based" control={<Radio />} label="分时段零售套餐" />
+                    <FormControlLabel value="non_time_based" control={<Radio />} label="不分时段零售套餐" />
                   </RadioGroup>
                 )}
               />
             </FormControl>
           </Grid>
 
-          {pricingMode === 'fixed_linked' && (
+          <Grid size={{ xs: 12 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Controller
+                name="is_green_power"
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    control={<Switch {...field} checked={field.value} />}
+                    label="绿色电力套餐"
+                  />
+                )}
+              />
+              <Tooltip title={GREEN_POWER_HINT} arrow>
+                <IconButton size="small">
+                  <HelpOutlineIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Grid>
+
+          {isGreenPower && (
             <Grid size={{ xs: 12 }}>
-              {/* FixedLinkedForm content */}
-              <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mt: 2 }}>
-                <Typography variant="subtitle1" gutterBottom>固定+联动定价配置</Typography>
-                <Grid container spacing={2}> {/* Outer Grid container for the whole form */}
-                  <Grid size={{ xs: 12 }}> {/* Fixed Price Section */}
-                    <Paper variant="outlined" sx={{ p: 2 }}>
-                        <Typography variant="h6" gutterBottom>固定价格 (Fixed Price)</Typography>
-                        <Grid container spacing={2}>
-                            <Grid size={{ xs: 12 }}>
-                                <FormControl component="fieldset">
-                                <FormLabel component="legend">定价方式</FormLabel>
-                                <Controller
-                                    name="fixed_linked_config.fixed_price.pricing_method"
-                                    control={control}
-                                    render={({ field }) => (
-                                    <RadioGroup {...field} row>
-                                        <FormControlLabel value="custom" control={<Radio />} label="自定义价格" />
-                                        <FormControlLabel value="reference" control={<Radio />} label="按参考价" />
-                                    </RadioGroup>
-                                    )}
-                                />
-                                </FormControl>
-                            </Grid>
-
-                            {packageType === 'time_based' && fixedPricingMethod === 'custom' && (
-                                <>
-                                    <Grid size={{ xs: 6, sm: 4 }}>
-                                        <Controller
-                                        name="fixed_linked_config.fixed_price.custom_prices.peak"
-                                        control={control}
-                                        render={({ field }) => <TextField {...field} type="number" label="尖峰时段价格 (元/MWh)" fullWidth variant="standard" />} 
-                                        />
-                                    </Grid>
-                                    <Grid size={{ xs: 6, sm: 4 }}>
-                                        <Controller
-                                        name="fixed_linked_config.fixed_price.custom_prices.high"
-                                        control={control}
-                                        render={({ field }) => <TextField {...field} type="number" label="峰时段价格 (元/MWh)" fullWidth variant="standard" />} 
-                                        />
-                                    </Grid>
-                                    <Grid size={{ xs: 6, sm: 4 }}>
-                                        <Controller
-                                        name="fixed_linked_config.fixed_price.custom_prices.flat"
-                                        control={control}
-                                        render={({ field }) => <TextField {...field} type="number" label="平时段价格 (元/MWh)" fullWidth variant="standard" />} 
-                                        />
-                                    </Grid>
-                                    <Grid size={{ xs: 6, sm: 4 }}>
-                                        <Controller
-                                        name="fixed_linked_config.fixed_price.custom_prices.valley"
-                                        control={control}
-                                        render={({ field }) => <TextField {...field} type="number" label="谷时段价格 (元/MWh)" fullWidth variant="standard" />} 
-                                        />
-                                    </Grid>
-                                    <Grid size={{ xs: 6, sm: 4 }}>
-                                        <Controller
-                                        name="fixed_linked_config.fixed_price.custom_prices.deep_valley"
-                                        control={control}
-                                        render={({ field }) => <TextField {...field} type="number" label="深谷时段价格 (元/MWh)" fullWidth variant="standard" />} 
-                                        />
-                                    </Grid>
-
-                                    {/* 价格比例警告 */}
-                                    {ratios && !compliant && (
-                                      <Grid size={{ xs: 12 }}>
-                                        <Alert severity="warning" sx={{ mt: 2 }}>
-                                          当前自定义价格比例不满足463号文要求，结算时将自动调整为标准比例 (1.6:1:0.4:0.3)。
-                                          <br />
-                                          <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
-                                            当前比例：峰/平={ratios.high_to_flat.toFixed(2)}，
-                                            谷/平={ratios.valley_to_flat.toFixed(2)}，
-                                            深谷/平={ratios.deep_valley_to_flat.toFixed(2)}
-                                          </Typography>
-                                        </Alert>
-                                      </Grid>
-                                    )}
-                                </>
-                            )}
-                            {packageType === 'non_time_based' && fixedPricingMethod === 'custom' && (
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <Controller
-                                    name="fixed_linked_config.fixed_price.custom_prices.all_day"
-                                    control={control}
-                                    render={({ field }) => <TextField {...field} type="number" label="自定义价格 (元/MWh)" fullWidth variant="standard" />} 
-                                    />
-                                </Grid>
-                            )}
-
-                            {/* Reference pricing method for fixed price */}
-                            {fixedPricingMethod === 'reference' && (
-                                <Grid size={{ xs: 12 }}>
-                                    <FormControl fullWidth variant="standard">
-                                        <InputLabel>参考标的</InputLabel>
-                                        <Controller
-                                            name="fixed_linked_config.fixed_price.reference_target"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <Select {...field} label="参考标的">
-                                                    <MenuItem value="grid_agency_price">电网代理购电价格(分时)</MenuItem>
-                                                    <MenuItem value="market_monthly_avg">电力市场月度交易均价(分时)</MenuItem>
-                                                </Select>
-                                            )}
-                                        />
-                                    </FormControl>
-                                </Grid>
-                            )}
-                        </Grid>
-                    </Paper>
-                  </Grid>
-
-                  {/* Linked Price Section */}
-                  <Grid size={{ xs: 12 }}> 
-                    <Paper variant="outlined" sx={{ p: 2 }}>
-                      <Typography variant="h6" gutterBottom>联动价格 (Linked Price)</Typography>
-                      <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                          <Controller
-                            name="fixed_linked_config.linked_price.ratio"
-                            control={control}
-                            render={({ field }) => (
-                              <TextField
-                                {...field}
-                                type="number"
-                                label="联动比例 (α) (%)"
-                                fullWidth
-                                variant="standard"
-                                inputProps={{ step: "1" }} 
-                                helperText="提示: 10%~20%，特定用户可为0"
-                              />
-                            )}
-                          />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                          <FormControl fullWidth variant="standard">
-                            <InputLabel>联动标的</InputLabel>
-                            <Controller
-                              name="fixed_linked_config.linked_price.target"
-                              control={control}
-                              render={({ field }) => (
-                                <Select {...field} label="联动标的">
-                                  <MenuItem value="day_ahead_avg">日前市场均价(分时)</MenuItem>
-                                  <MenuItem value="real_time_avg">实时市场均价(分时)</MenuItem>
-                                </Select>
-                              )}
-                            />
-                          </FormControl>
-                        </Grid>
-                      </Grid>
-                    </Paper>
-                  </Grid>
-
-                  {/* Floating Fee Section */}
-                  <Grid size={{ xs: 12 }}>
-                    <Paper variant="outlined" sx={{ p: 2 }}>
-                      <Typography variant="h6" gutterBottom>浮动费用 (Floating Fee)</Typography>
-                      <Grid container spacing={2}>
-                        <Grid size={{ xs: 12 }}>
-                          <Controller
-                            name="fixed_linked_config.floating_fee"
-                            control={control}
-                            render={({ field }) => (
-                              <TextField
-                                {...field}
-                                type="number"
-                                label="浮动费用 (元/MWh)"
-                                fullWidth
-                                variant="standard"
-                                inputProps={{ step: "0.01" }}
-                                helperText="提示: 可选项，大于等于0"
-                              />
-                            )}
-                          />
-                        </Grid>
-                      </Grid>
-                    </Paper>
-                  </Grid>
-                </Grid>
-              </Paper>
-            </Grid>
-          )}
-
-          {pricingMode === 'price_spread' && (
-            <Grid size={{ xs: 12 }}>
-              {/* PriceSpreadForm content */}
-              <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mt: 2 }}>
-                <Typography variant="subtitle1" gutterBottom>价差分成定价配置</Typography>
-                <Grid container spacing={2}> {/* Outer Grid container for the whole form */}
-                  <Grid size={{ xs: 12 }}> {/* Reference Price Section */}
-                    <Paper variant="outlined" sx={{ p: 2 }}>
-                      <Typography variant="h6" gutterBottom>参考价 (Reference Price)</Typography>
-                      <Grid container spacing={2}>
-                        <Grid size={{ xs: 12 }}>
-                          <FormControl fullWidth variant="standard">
-                            <InputLabel>参考标的</InputLabel>
-                            <Controller
-                              name="price_spread_config.reference_price.target"
-                              control={control}
-                              render={({ field }) => (
-                                <Select {...field} label="参考标的">
-                                  <MenuItem value="market_monthly_avg">电力市场月度交易均价</MenuItem>
-                                  <MenuItem value="grid_agency">电网代理购电价格</MenuItem>
-                                  <MenuItem value="wholesale_settlement">批发侧结算均价</MenuItem>
-                                </Select>
-                              )}
-                            />
-                          </FormControl>
-                        </Grid>
-                      </Grid>
-                    </Paper>
-                  </Grid>
-
-                  <Grid size={{ xs: 12 }}> {/* Price-spread Sharing Section */}
-                    <Paper variant="outlined" sx={{ p: 2 }}>
-                      <Typography variant="h6" gutterBottom>价差分成 (Price-spread Sharing)</Typography>
-                      <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                          <Controller
-                            name="price_spread_config.price_spread.agreed_spread"
-                            control={control}
-                            render={({ field }) => (
-                              <TextField
-                                {...field}
-                                type="number"
-                                label="约定价差 (元/MWh)"
-                                fullWidth
-                                variant="standard"
-                                inputProps={{ step: "1" }}
-                                helperText="提示: 可为固定值或参考价之差"
-                              />
-                            )}
-                          />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                          <Controller
-                            name="price_spread_config.price_spread.sharing_ratio"
-                            control={control}
-                            render={({ field }) => (
-                              <TextField
-                                {...field}
-                                type="number"
-                                label="分成比例 (k) (%)"
-                                fullWidth
-                                variant="standard"
-                                inputProps={{ step: "1" }}
-                                helperText="提示: 0%~100%"
-                              />
-                            )}
-                          />
-                        </Grid>
-                      </Grid>
-                    </Paper>
-                  </Grid>
-
-                  <Grid size={{ xs: 12 }}> {/* Floating Fee Section */}
-                    <Paper variant="outlined" sx={{ p: 2 }}>
-                      <Typography variant="h6" gutterBottom>浮动费用 (Floating Fee)</Typography>
-                      <Grid container spacing={2}>
-                        <Grid size={{ xs: 12 }}>
-                          <Controller
-                            name="price_spread_config.floating_fee"
-                            control={control}
-                            render={({ field }) => (
-                              <TextField
-                                {...field}
-                                type="number"
-                                label="浮动费用 (元/MWh)"
-                                fullWidth
-                                variant="standard"
-                                inputProps={{ step: "0.01" }}
-                                helperText="提示: 可选项，大于等于0"
-                              />
-                            )}
-                          />
-                        </Grid>
-                      </Grid>
-                    </Paper>
-                  </Grid>
-                </Grid>
-              </Paper>
+              <Alert
+                severity="warning"
+                sx={{
+                  '& .MuiAlert-message': {
+                    color: 'error.main',
+                    fontWeight: 'bold'
+                  }
+                }}
+              >
+                {GREEN_POWER_WARNING}
+              </Alert>
             </Grid>
           )}
         </Grid>
@@ -460,118 +208,182 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
     );
   };
 
-  const renderAdditionalTermsSection = (control: Control<PackageFormData>, packageType: string) => {
-    const greenPowerEnabled = watch('additional_terms.green_power.enabled');
-    const priceCapEnabled = watch('additional_terms.price_cap.enabled');
+  // 渲染定价模型选择区
+  const renderPricingModelSection = (control: Control<PackageFormData>) => {
+    return (
+      <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
+        <Typography variant="h6" gutterBottom>定价模型</Typography>
+        <Grid container spacing={{ xs: 1, sm: 2 }}>
+          <Grid size={{ xs: 12 }}>
+            {loadingModels ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                <CircularProgress size={24} />
+              </Box>
+            ) : (
+              <FormControl fullWidth>
+                <InputLabel>选择定价模型</InputLabel>
+                <Controller
+                  name="model_code"
+                  control={control}
+                  rules={{ required: '请选择定价模型' }}
+                  render={({ field, fieldState: { error } }) => (
+                    <>
+                      <Select
+                        {...field}
+                        label="选择定价模型"
+                        error={!!error}
+                      >
+                        {pricingModels.map((model) => (
+                          <MenuItem key={model.model_code} value={model.model_code}>
+                            {model.display_name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {error && (
+                        <FormHelperText error>{error.message}</FormHelperText>
+                      )}
+                    </>
+                  )}
+                />
+              </FormControl>
+            )}
+          </Grid>
+
+          {/* 显示选中模型的公式和说明 */}
+          {modelCode && pricingModels.length > 0 && (
+            <Grid size={{ xs: 12 }}>
+              {(() => {
+                const selectedModel = pricingModels.find(m => m.model_code === modelCode);
+                if (!selectedModel) return null;
+
+                return (
+                  <Alert severity="info" sx={{ mt: 1 }}>
+                    {selectedModel.formula && (
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        <strong>计算公式：</strong>{selectedModel.formula}
+                      </Typography>
+                    )}
+                    {selectedModel.description && (
+                      <Typography variant="caption" component="div">
+                        <div dangerouslySetInnerHTML={{ __html: selectedModel.description }} />
+                      </Typography>
+                    )}
+                  </Alert>
+                );
+              })()}
+            </Grid>
+          )}
+        </Grid>
+      </Paper>
+    );
+  };
+
+  // 渲染定价配置区（动态表单）
+  const renderPricingConfigSection = (control: Control<PackageFormData>) => {
+    if (!modelCode) {
+      return (
+        <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
+          <Alert severity="info">请先选择定价模型</Alert>
+        </Paper>
+      );
+    }
 
     return (
       <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
-        <Typography variant="h6" gutterBottom>附加条款</Typography>
+        <Typography variant="h6" gutterBottom>定价配置</Typography>
+        <PricingConfigForm modelCode={modelCode} control={control} />
+      </Paper>
+    );
+  };
+
+  // 渲染绿电配置区
+  const renderGreenPowerConfigSection = (control: Control<PackageFormData>) => {
+    if (!isGreenPower) return null;
+
+    return (
+      <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
+        <Typography variant="h6" gutterBottom>绿色电力配置</Typography>
         <Grid container spacing={{ xs: 1, sm: 2 }}>
           <Grid size={{ xs: 12, md: 6 }}>
-            <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-              <FormControlLabel
-                control={
-                  <Controller
-                    name="additional_terms.green_power.enabled"
-                    control={control}
-                    render={({ field }) => <Switch {...field} checked={field.value} />}
-                  />
-                }
-                label="绿色电力套餐"
-                disabled={packageType !== 'time_based'}
-              />
-              {greenPowerEnabled && (
-                <Box sx={{ mt: 2 }}>
-                  <Controller
-                    name="additional_terms.green_power.monthly_env_value"
-                    control={control}
-                    render={({ field }) => <TextField {...field} type="number" label="月度绿色电力环境价值 (元/MWh)" fullWidth margin="dense" />} 
-                  />
-                  <Controller
-                    name="additional_terms.green_power.deviation_compensation_ratio"
-                    control={control}
-                    render={({ field }) => <TextField {...field} type="number" label="偏差补偿比例 (%)" fullWidth margin="dense" />} 
-                  />
-                  <FormHelperText sx={{ mt: 1 }}>
-                    “双方用电量与约定电量偏差时，将按此比例进行补偿”。
-                  </FormHelperText>
-                </Box>
+            <Controller
+              name="green_power_config.monthly_env_value"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  type="number"
+                  label="月度绿色电力环境价值 (元/MWh)"
+                  fullWidth
+                  size="small"
+                />
               )}
-            </Paper>
+            />
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
-            <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-              <FormControlLabel
-                control={
-                  <Controller
-                    name="additional_terms.price_cap.enabled"
-                    control={control}
-                    render={({ field }) => <Switch {...field} checked={field.value} />}
-                  />
-                }
-                label="封顶价格条款"
-              />
-              {priceCapEnabled && (
-                <Box sx={{ mt: 2 }}>
-                    <FormControl fullWidth margin="dense">
-                        <InputLabel>参考价格标的</InputLabel>
-                        <Controller
-                            name="additional_terms.price_cap.reference_target"
-                            control={control}
-                            defaultValue="grid_agency_monthly_avg"
-                            render={({ field }) => (
-                                <Select {...field} label="参考价格标的">
-                                    <MenuItem value="grid_agency_monthly_avg">电网代理购电发布的电力市场当月平均上网电价</MenuItem>
-                                    {/* Add other options if available */}
-                                </Select>
-                            )}
-                        />
-                    </FormControl>
-                  <Controller
-                    name="additional_terms.price_cap.non_peak_markup"
-                    control={control}
-                    render={({ field }) => <TextField {...field} type="number" label="非尖峰月份上浮 (%)" fullWidth margin="dense" />} 
-                  />
-                  <Controller
-                    name="additional_terms.price_cap.peak_markup"
-                    control={control}
-                    render={({ field }) => <TextField {...field} type="number" label="尖峰月份上浮 (%)" fullWidth margin="dense" />} 
-                  />
-                  <FormHelperText sx={{ mt: 1 }}>
-                    “结算时，若套餐结算价高于封顶价，将按封顶价结算”。
-                  </FormHelperText>
-                </Box>
+            <Controller
+              name="green_power_config.deviation_compensation_ratio"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  type="number"
+                  label="偏差补偿比例 (%)"
+                  fullWidth
+                  size="small"
+                />
               )}
-            </Paper>
+            />
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <FormHelperText>
+              双方用电量与约定电量偏差时，将按此比例进行补偿
+            </FormHelperText>
           </Grid>
         </Grid>
       </Paper>
     );
   };
 
+  // 渲染价格说明区
+  const renderPriceDescriptionSection = () => (
+    <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
+      <Typography variant="h6" gutterBottom>价格说明</Typography>
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Typography variant="subtitle2" gutterBottom>
+          封顶价格条款
+        </Typography>
+
+        <Alert severity="info" sx={{ mt: 1 }}>
+          <Typography variant="body2">
+            {PRICE_CAP_DESCRIPTION}
+          </Typography>
+        </Alert>
+
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+          注：此条款为系统默认条款，不可编辑
+        </Typography>
+      </Paper>
+    </Paper>
+  );
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const packageType = watch('package_type'); // Watch package_type for conditional rendering in AdditionalTerms
 
   // 保存处理函数
   const handleSaveClick = async (asDraft: boolean) => {
     handleSubmit(async (data: PackageFormData) => {
       setSaving(true);
-      clearErrors(); // 清除之前的错误
+      clearErrors();
 
       try {
         await onSave(data, asDraft);
-        // onSave成功后会关闭对话框
       } catch (error: any) {
-        // 处理409冲突错误
         if (error.response?.status === 409) {
           setError('package_name', {
             type: 'manual',
             message: '套餐名称已存在，请使用其他名称'
           });
         }
-        // 其他错误在父组件处理
       } finally {
         setSaving(false);
       }
@@ -592,8 +404,10 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
         ) : (
           <form>
             {renderBasicInfoSection(control)}
-            {renderPricingModeSection(control)}
-            {renderAdditionalTermsSection(control, packageType)}
+            {renderPricingModelSection(control)}
+            {renderPricingConfigSection(control)}
+            {renderGreenPowerConfigSection(control)}
+            {renderPriceDescriptionSection()}
           </form>
         )}
       </DialogContent>

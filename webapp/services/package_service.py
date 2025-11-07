@@ -4,6 +4,7 @@ from webapp.tools.mongo import DATABASE
 from webapp.models.retail_package import RetailPackage, RetailPackageListItem, ValidationResult
 from datetime import datetime
 
+
 class PackageService:
     """
     Service layer for retail package management.
@@ -41,16 +42,27 @@ class PackageService:
         package.updated_by = operator
         package.status = status
 
-        # 价格比例校验（如果是固定+联动模式且使用自定义价格）
-        if (package.pricing_mode == "fixed_linked" and
-            package.fixed_linked_config and
-            package.fixed_linked_config.fixed_price.pricing_method == "custom"):
+        # 价格配置校验（使用新的统一校验）
+        if package.model_code and package.pricing_config:
+            from webapp.services.pricing_model_service import pricing_model_service
 
-            custom_prices = package.fixed_linked_config.fixed_price.custom_prices
-            if custom_prices:
-                from webapp.services.pricing_engine import PricingEngine
-                validation_result = PricingEngine.validate_price_ratio(custom_prices)
-                package.validation = ValidationResult(**validation_result)
+            validation_result = pricing_model_service.validate_pricing_config(
+                model_code=package.model_code,
+                config=package.pricing_config
+            )
+
+            if not validation_result.get("valid"):
+                # 校验失败，但我们仍允许保存为草稿
+                package.validation = ValidationResult(
+                    price_ratio_compliant=False,
+                    warnings=validation_result.get("errors", []) + validation_result.get("warnings", [])
+                )
+            elif validation_result.get("warnings"):
+                # 校验通过但有警告
+                package.validation = ValidationResult(
+                    price_ratio_compliant=True,
+                    warnings=validation_result.get("warnings", [])
+                )
 
         doc_to_insert = package.dict(by_alias=True)
         # 确保写入数据库的是ObjectId，而不是被Pydantic过早序列化为的字符串
@@ -78,30 +90,24 @@ class PackageService:
             query["package_name"] = {"$regex": filters["keyword"], "$options": "i"}
         if filters.get("package_type"):
             query["package_type"] = filters["package_type"]
-        if filters.get("pricing_mode"):
-            query["pricing_mode"] = filters["pricing_mode"]
+        if filters.get("model_code"):
+            query["model_code"] = filters["model_code"]
         if filters.get("status"):
             query["status"] = filters["status"]
 
         total = self.collection.count_documents(query)
-        
+
         cursor = self.collection.find(query).skip((page - 1) * page_size).limit(page_size)
-        
+
         items = []
         for doc in cursor:
-            # 计算派生字段
-            additional_terms = doc.get("additional_terms", {})
-            has_green_power = additional_terms.get("green_power", {}).get("enabled", False)
-            has_price_cap = additional_terms.get("price_cap", {}).get("enabled", False)
-
             # 构建列表项数据
             list_item_data = {
                 "_id": doc["_id"],
                 "package_name": doc.get("package_name"),
                 "package_type": doc.get("package_type"),
-                "pricing_mode": doc.get("pricing_mode"),
-                "has_green_power": has_green_power,
-                "has_price_cap": has_price_cap,
+                "model_code": doc.get("model_code"),
+                "is_green_power": doc.get("is_green_power", False),
                 "status": doc.get("status"),
                 "created_at": doc.get("created_at"),
                 "updated_at": doc.get("updated_at")
@@ -253,25 +259,32 @@ class PackageService:
         package_data["updated_by"] = operator
         package_data["updated_at"] = datetime.utcnow()
 
-        # 5. 价格比例校验（如果有价格配置）
-        if (package_data.get("pricing_mode") == "fixed_linked" and
-            package_data.get("fixed_linked_config", {})
-                .get("fixed_price", {})
-                .get("pricing_method") == "custom"):
+        # 5. 价格配置校验（使用新的统一校验）
+        model_code = package_data.get("model_code")
+        pricing_config = package_data.get("pricing_config")
 
-            custom_prices_data = (
-                package_data.get("fixed_linked_config", {})
-                    .get("fixed_price", {})
-                    .get("custom_prices", {})
+        if model_code and pricing_config:
+            from webapp.services.pricing_model_service import pricing_model_service
+
+            validation_result = pricing_model_service.validate_pricing_config(
+                model_code=model_code,
+                config=pricing_config
             )
 
-            if custom_prices_data:
-                from webapp.services.pricing_engine import PricingEngine
-                from webapp.models.retail_package import CustomPrices
-
-                custom_prices = CustomPrices(**custom_prices_data)
-                validation_result = PricingEngine.validate_price_ratio(custom_prices)
-                package_data["validation"] = validation_result
+            if not validation_result.get("valid"):
+                # 校验失败，但我们仍允许保存为草稿
+                from webapp.models.retail_package import ValidationResult
+                package_data["validation"] = ValidationResult(
+                    price_ratio_compliant=False,
+                    warnings=validation_result.get("errors", []) + validation_result.get("warnings", [])
+                ).dict()
+            elif validation_result.get("warnings"):
+                # 校验通过但有警告
+                from webapp.models.retail_package import ValidationResult
+                package_data["validation"] = ValidationResult(
+                    price_ratio_compliant=True,
+                    warnings=validation_result.get("warnings", [])
+                ).dict()
 
         # 6. 执行更新
         try:

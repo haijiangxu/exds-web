@@ -1,0 +1,613 @@
+[
+  {
+    "user_name": "上高县东纬纺织有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600255654355",
+        "metering_points": [
+          {
+            "metering_point_id": "228632645",
+            "meter_id": "3630001482148066073880",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "上高县玖美袜业有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600647697902",
+        "metering_points": [
+          {
+            "metering_point_id": "238631521",
+            "meter_id": "3630001492349008117274",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "丰城超胜塑业有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600581282967",
+        "metering_points": [
+          {
+            "metering_point_id": "235904607",
+            "meter_id": "3630001201800010787577",
+            "allocation_percentage": 97.0
+          },
+          {
+            "metering_point_id": "235904611",
+            "meter_id": "3630001201800010787577",
+            "allocation_percentage": 3.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "九江嘉信高创新材料有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600188726280",
+        "metering_points": [
+          {
+            "metering_point_id": "225797922",
+            "meter_id": "3630001492249049851376",
+            "allocation_percentage": 95.0
+          },
+          {
+            "metering_point_id": "225797933",
+            "meter_id": "3630001492249049851376",
+            "allocation_percentage": 5.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "吉安伊戈尔磁电科技有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600661256075",
+        "metering_points": [
+          {
+            "metering_point_id": "239794678",
+            "meter_id": "3630001482148065976601",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "国网江西省电力有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600017042680",
+        "metering_points": [
+          {
+            "metering_point_id": "211765521",
+            "meter_id": "3630001492449001413134",
+            "allocation_percentage": 79.64
+          },
+          {
+            "metering_point_id": "211765522",
+            "meter_id": "3630001492449001413134",
+            "allocation_percentage": 20.36
+          }
+        ]
+      },
+      {
+        "account_id": "3600017042749",
+        "metering_points": [
+          {
+            "metering_point_id": "211765539",
+            "meter_id": "3630001492449001413158",
+            "allocation_percentage": 100
+          },
+          {
+            "metering_point_id": "211765540",
+            "meter_id": "3630001492449001413158",
+            "allocation_percentage": 0
+          }
+        ]
+      },
+      {
+        "account_id": "3600017042808",
+        "metering_points": [
+          {
+            "metering_point_id": "211765557",
+            "meter_id": "3630001492449001413165",
+            "allocation_percentage": 80.0
+          },
+          {
+            "metering_point_id": "211765558",
+            "meter_id": "3630001492449001413165",
+            "allocation_percentage": 20.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "国网江西省电力有限公司供电服务管理中心",
+    "utility_accounts": [
+      {
+        "account_id": "3600253314262",
+        "metering_points": [
+          {
+            "metering_point_id": "228409951",
+            "meter_id": "3630001201600044644606",
+            "allocation_percentage": 100.0
+          },
+          {
+            "metering_point_id": "239478806",
+            "meter_id": "3630001492449001419730",
+            "allocation_percentage": 100.0
+          },
+          {
+            "metering_point_id": "240931394",
+            "meter_id": "3630001492249049024411",
+            "allocation_percentage": 70.0
+          },
+          {
+            "metering_point_id": "240931395",
+            "meter_id": "3630001492249049024411",
+            "allocation_percentage": 30.0
+          },
+          {
+            "metering_point_id": "241530248",
+            "meter_id": "'3630001492249049279811",
+            "allocation_percentage": 70.0
+          },
+          {
+            "metering_point_id": "241530251",
+            "meter_id": "'3630001492249049279811",
+            "allocation_percentage": 30.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "国网江西省电力有限公司信息通信分公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600499213048",
+        "metering_points": [
+          {
+            "metering_point_id": "234391719",
+            "meter_id": "3630001201600047815317",
+            "allocation_percentage": 100.0
+          }
+        ]
+      },
+      {
+        "account_id": "3600499213501",
+        "metering_points": [
+          {
+            "metering_point_id": "234392080",
+            "meter_id": "3630001201600047810695",
+            "allocation_percentage": 100.0
+          }
+        ]
+      },
+      {
+        "account_id": "3600499220356",
+        "metering_points": [
+          {
+            "metering_point_id": "234392274",
+            "meter_id": "3630001201600047817397",
+            "allocation_percentage": 100.0
+          }
+        ]
+      },
+      {
+        "account_id": "3600499220590",
+        "metering_points": [
+          {
+            "metering_point_id": "234392435",
+            "meter_id": "3630001201600047800238",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "国网江西省电力有限公司柘林水电厂",
+    "utility_accounts": [
+      {
+        "account_id": "3600008960854",
+        "metering_points": [
+          {
+            "metering_point_id": "210980639",
+            "meter_id": "3630001412041013775787",
+            "allocation_percentage": 100.0
+          },
+          {
+            "metering_point_id": "210980640",
+            "meter_id": "3630001412041013777996",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "国网江西省电力有限公司电力科学研究院",
+    "utility_accounts": [
+      {
+        "account_id": "3600014074165",
+        "metering_points": [
+          {
+            "metering_point_id": "211474584",
+            "meter_id": "3630001492249049010711",
+            "allocation_percentage": 90.0
+          },
+          {
+            "metering_point_id": "211474585",
+            "meter_id": "3630001492249049010711",
+            "allocation_percentage": 10.0
+          },
+          {
+            "metering_point_id": "211474586",
+            "meter_id": "3630001492249049009142",
+            "allocation_percentage": 90.0
+          },
+          {
+            "metering_point_id": "211474587",
+            "meter_id": "3630001492249049009142",
+            "allocation_percentage": 10.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "国网江西省电力有限公司超高压分公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600014071948",
+        "metering_points": [
+          {
+            "metering_point_id": "211474252",
+            "meter_id": "3630001492249049029898",
+            "allocation_percentage": 65.0
+          },
+          {
+            "metering_point_id": "211474253",
+            "meter_id": "3630001492249049031259",
+            "allocation_percentage": 63.4569
+          },
+          {
+            "metering_point_id": "227324023",
+            "meter_id": "3630001492249049029898",
+            "allocation_percentage": 25.0
+          },
+          {
+            "metering_point_id": "227324032",
+            "meter_id": "3630001492249049031259",
+            "allocation_percentage": 25.0
+          }
+        ]
+      },
+      {
+        "account_id": "3600014072026",
+        "metering_points": [
+          {
+            "metering_point_id": "211474268",
+            "meter_id": "3630001492249049247001",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+        ]
+
+  },
+  {
+    "user_name": "国网江西省电力物资有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600015996813",
+        "metering_points": [
+          {
+            "metering_point_id": "211659847",
+            "meter_id": "3630001482248040521496",
+            "allocation_percentage": 100.0
+          },
+          {
+            "metering_point_id": "211659848",
+            "meter_id": "3630001482248040528600",
+            "allocation_percentage": 49.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "奥朗斯集团江西西美克科技有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600629481743",
+        "metering_points": [
+          {
+            "metering_point_id": "237290067",
+            "meter_id": "3630001492349007796210",
+            "allocation_percentage": 99.0
+          },
+          {
+            "metering_point_id": "237290092",
+            "meter_id": "3630001492349007796210",
+            "allocation_percentage": 1.0
+          },
+          {
+            "metering_point_id": "240347142",
+            "meter_id": "3630001492249049733825",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "宜春旭威科技有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600372122111",
+        "metering_points": [
+          {
+            "metering_point_id": "231337645",
+            "meter_id": "3630001492349007958892",
+            "allocation_percentage": 100.0
+          },
+          {
+            "metering_point_id": "233216458",
+            "meter_id": "3630001492249049308818",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "峡江县宏盛纸业有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600036259351",
+        "metering_points": [
+          {
+            "metering_point_id": "213465314",
+            "meter_id": "3630001492349008108258",
+            "allocation_percentage": 99.4
+          },
+          {
+            "metering_point_id": "213465315",
+            "meter_id": "3630001492349008108258",
+            "allocation_percentage": 0.6
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "新干县鸿鑫石材有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600240069414",
+        "metering_points": [
+          {
+            "metering_point_id": "227921714",
+            "meter_id": "3630001482248092212311",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "景德镇市福万利陶瓷有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600002386658",
+        "metering_points": [
+          {
+            "metering_point_id": "10338825",
+            "meter_id": "3630001482248040254325",
+            "allocation_percentage": 95.0
+          },
+          {
+            "metering_point_id": "10338826",
+            "meter_id": "3630001482248040254325",
+            "allocation_percentage": 5.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "景德镇盛世泥火文化传承股份有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600622620772",
+        "metering_points": [
+          {
+            "metering_point_id": "236851023",
+            "meter_id": "3630001412041026920730",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "江西天辉新材料有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600164164004",
+        "metering_points": [
+          {
+            "metering_point_id": "225159499",
+            "meter_id": "3630001492249049067906",
+            "allocation_percentage": 98.0
+          },
+          {
+            "metering_point_id": "225159505",
+            "meter_id": "3630001492249049067906",
+            "allocation_percentage": 2.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "江西智松科技有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600368992564",
+        "metering_points": [
+          {
+            "metering_point_id": "231220419",
+            "meter_id": "3630001492249048663581",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "江西正辉新能源有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600671207281",
+        "metering_points": [
+          {
+            "metering_point_id": "240740096",
+            "meter_id": "3630001492249049064738",
+            "allocation_percentage": 100.0
+          },
+          {
+            "metering_point_id": "241510080",
+            "meter_id": "3630001492249049252982",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "江西省义源玻璃有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600634361977",
+        "metering_points": [
+          {
+            "metering_point_id": "237654114",
+            "meter_id": "3630001492349007574856",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "江西省源鑫箱包配件有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600500210552",
+        "metering_points": [
+          {
+            "metering_point_id": "234424846",
+            "meter_id": "3630001492349007653063",
+            "allocation_percentage": 97.0
+          },
+          {
+            "metering_point_id": "234424849",
+            "meter_id": "3630001492349007653063",
+            "allocation_percentage": 3.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "江西省送变电工程有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600014335163",
+        "metering_points": [
+          {
+            "metering_point_id": "211500831",
+            "meter_id": "3630001492449001404088",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "江西省驰邦药业有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600036259452",
+        "metering_points": [
+          {
+            "metering_point_id": "213465353",
+            "meter_id": "3630001492349008083029",
+            "allocation_percentage": 99.4
+          },
+          {
+            "metering_point_id": "213465354",
+            "meter_id": "3630001492349008083029",
+            "allocation_percentage": 0.6
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "user_name": "江西科晨技术有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600685046876",
+        "metering_points": [
+          {
+            "metering_point_id": "242113198",
+            "meter_id": "3630001492249049239228",
+            "allocation_percentage": 100.0
+          },
+          {
+            "metering_point_id": "242113205",
+            "meter_id": "3630001492249049245786",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  },
+    {
+    "user_name": "江西纬宏锂业有限公司",
+    "utility_accounts": [
+      {
+        "account_id": "3600539156067",
+        "metering_points": [
+          {
+            "metering_point_id": "240509322",
+            "meter_id": "3630001492249049818416",
+            "allocation_percentage": 100.0
+          },
+          {
+            "metering_point_id": "235336079",
+            "meter_id": "3630001482248004805570",
+            "allocation_percentage": 100.0
+          }
+        ]
+      }
+    ]
+  }
+]

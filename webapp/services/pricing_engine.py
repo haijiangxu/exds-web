@@ -1,4 +1,5 @@
-from webapp.models.retail_package import CustomPrices
+# NOTE: CustomPrices 类已经在重构中删除
+# 这个文件中的 validate_price_ratio 方法已经被 pricing_model_service.py 中的新校验逻辑替代
 
 class PricingEngine:
     """Retail package pricing calculation engine."""
@@ -9,36 +10,8 @@ class PricingEngine:
         "deep_valley_to_flat": 0.3
     }
 
-    @staticmethod
-    def validate_price_ratio(custom_prices: CustomPrices) -> dict:
-        """Validate if the price ratio complies with regulations."""
-        if custom_prices.flat == 0:
-            return {
-                "compliant": False,
-                "actual_ratios": {},
-                "expected_ratios": PricingEngine.STANDARD_RATIOS,
-                "warnings": ["平段电价不能为0"]
-            }
-
-        actual_ratios = {
-            "high_to_flat": round(custom_prices.high / custom_prices.flat, 2),
-            "valley_to_flat": round(custom_prices.valley / custom_prices.flat, 2),
-            "deep_valley_to_flat": round(custom_prices.deep_valley / custom_prices.flat, 2)
-        }
-
-        compliant = all([
-            abs(actual_ratios["high_to_flat"] - PricingEngine.STANDARD_RATIOS["high_to_flat"]) < 0.01,
-            abs(actual_ratios["valley_to_flat"] - PricingEngine.STANDARD_RATIOS["valley_to_flat"]) < 0.01,
-            abs(actual_ratios["deep_valley_to_flat"] - PricingEngine.STANDARD_RATIOS["deep_valley_to_flat"]) < 0.01
-        ])
-        
-        warnings = []
-        if not compliant:
-            warnings.append("当前自定义价格比例不满足463号文要求，结算时将自动调整为标准比例。")
-
-        return {
-            "compliant": compliant,
-            "actual_ratios": actual_ratios,
-            "expected_ratios": PricingEngine.STANDARD_RATIOS,
-            "warnings": warnings
-        }
+    # NOTE: 此方法已废弃，使用 pricing_model_service.validate_pricing_config 替代
+    # @staticmethod
+    # def validate_price_ratio(custom_prices: CustomPrices) -> dict:
+    #     """Validate if the price ratio complies with regulations."""
+    #     pass
