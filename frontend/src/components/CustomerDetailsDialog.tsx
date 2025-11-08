@@ -162,7 +162,26 @@ export const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
                     </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
-                    <Typography variant="body2" color="text.secondary">地区</Typography>
+                    <Typography variant="body2" color="text.secondary">状态</Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                        <Chip
+                            label={getStatusText(data?.status || '')}
+                            color={getStatusColor(data?.status || '') as any}
+                            size="small"
+                        />
+                    </Box>
+                </Grid>
+            </Grid>
+        </Paper>
+    );
+
+    // 渲染地理位置信息卡片
+    const renderLocationInfo = () => (
+        <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
+            <Typography variant="h6" gutterBottom>地理位置信息</Typography>
+            <Grid container spacing={{ xs: 1, sm: 2 }}>
+                <Grid size={{ xs: 12, md: 6 }}>
+                    <Typography variant="body2" color="text.secondary">地市</Typography>
                     <Typography variant="body1" sx={{ mt: 0.5 }}>
                         {data?.region || '-'}
                     </Typography>
@@ -172,16 +191,6 @@ export const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
                     <Typography variant="body1" sx={{ mt: 0.5 }}>
                         {data?.district || '-'}
                     </Typography>
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                    <Typography variant="body2" color="text.secondary">状态</Typography>
-                    <Box sx={{ mt: 0.5 }}>
-                        <Chip
-                            label={getStatusText(data?.status || '')}
-                            color={getStatusColor(data?.status || '') as any}
-                            size="small"
-                        />
-                    </Box>
                 </Grid>
                 <Grid size={{ xs: 12 }}>
                     <Typography variant="body2" color="text.secondary">详细地址</Typography>
@@ -390,6 +399,7 @@ export const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
                 ) : data ? (
                     <Box>
                         {renderBasicInfo()}
+                        {renderLocationInfo()}
                         {renderContactInfo()}
                         {renderAccountInfo()}
                         {renderSystemInfo()}

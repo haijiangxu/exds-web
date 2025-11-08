@@ -98,9 +98,7 @@ export interface CustomerListItem {
 }
 
 export interface CustomerListParams {
-  page?: number;
-  size?: number;
-  search?: string;
+  keyword?: string;
   user_type?: string;
   industry?: string;
   region?: string;

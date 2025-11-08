@@ -6,6 +6,8 @@ import ArchiveIcon from '@mui/icons-material/Archive';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useParams, useNavigate, useLocation, matchPath } from 'react-router-dom';
 import { PageHeader } from '../components/PageHeader';
 import apiClient from '../api/client';
 import { format } from 'date-fns';
@@ -51,6 +53,28 @@ const getStatusChipColor = (status: string): 'success' | 'warning' | 'default' =
 };
 
 const RetailPackagePage: React.FC = () => {
+  // 路由参数和导航
+  const params = useParams<{ packageId?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // 响应式设计
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // 使用 matchPath 解析当前路由状态
+  const createMatch = matchPath('/basic-data/retail-packages/create', location.pathname);
+  const viewMatch = matchPath('/basic-data/retail-packages/view/:packageId', location.pathname);
+  const editMatch = matchPath('/basic-data/retail-packages/edit/:packageId', location.pathname);
+  const copyMatch = matchPath('/basic-data/retail-packages/copy/:packageId', location.pathname);
+
+  // 根据当前路由确定状态
+  const isCreateView = !!createMatch;
+  const isDetailView = !!viewMatch;
+  const isEditView = !!editMatch;
+  const isCopyView = !!copyMatch;
+  const currentPackageId = params.packageId;
+
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
@@ -64,13 +88,45 @@ const RetailPackagePage: React.FC = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
 
+  // 编辑对话框状态 (仅桌面端使用)
   const [isEditorOpen, setEditorOpen] = useState(false);
   const [editPackageId, setEditPackageId] = useState<string | undefined>(undefined);
   const [editorMode, setEditorMode] = useState<'create' | 'edit' | 'copy'>('create');
 
-  // 详情对话框相关状态
+  // 详情对话框状态 (仅桌面端使用)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [detailsPackageId, setDetailsPackageId] = useState<string | null>(null);
+
+  // 移动端套餐详情状态
+  const [mobilePackageData, setMobilePackageData] = useState<Package | null>(null);
+  const [mobilePackageLoading, setMobilePackageLoading] = useState(false);
+  const [mobilePackageError, setMobilePackageError] = useState<string | null>(null);
+
+  // 加载移动端套餐详情数据
+  const loadMobilePackageData = async (packageId: string) => {
+    setMobilePackageLoading(true);
+    setMobilePackageError(null);
+    try {
+        const response = await apiClient.get(`/api/v1/retail-packages/${packageId}`);
+        setMobilePackageData(response.data);
+    } catch (err: any) {
+        console.error('加载套餐详情失败:', err);
+        setMobilePackageError(err.response?.data?.detail || err.message || '加载套餐详情失败');
+        setMobilePackageData(null);
+    } finally {
+        setMobilePackageLoading(false);
+    }
+  };
+
+  // 根据路由参数加载移动端套餐数据
+  useEffect(() => {
+    if (currentPackageId && (isDetailView || isEditView || isCopyView)) {
+        loadMobilePackageData(currentPackageId);
+    } else {
+        setMobilePackageData(null);
+        setMobilePackageError(null);
+    }
+  }, [currentPackageId, isDetailView, isEditView, isCopyView]);
 
   // 删除功能相关状态
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -96,9 +152,6 @@ const RetailPackagePage: React.FC = () => {
     message: '',
     severity: 'success'
   });
-
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const { models: pricingModels, getModelDisplayName } = usePricingModels();
 
@@ -232,28 +285,57 @@ const RetailPackagePage: React.FC = () => {
     setPackageToActivate(null);
   };
 
+  // 移动端返回列表
+  const handleBackToList = () => {
+    navigate('/basic-data/retail-packages');
+  };
+
   // 查看详情处理函数
   const handleViewDetails = (packageId: string) => {
-    setDetailsPackageId(packageId);
-    setDetailsDialogOpen(true);
+    if (isMobile) {
+      // 移动端使用路由导航
+      navigate(`/basic-data/retail-packages/view/${packageId}`);
+    } else {
+      // 桌面端使用对话框
+      setDetailsPackageId(packageId);
+      setDetailsDialogOpen(true);
+    }
   };
 
   const handleEdit = (packageId: string) => {
-    setEditPackageId(packageId);
-    setEditorMode('edit');
-    setEditorOpen(true);
+    if (isMobile) {
+      // 移动端使用路由导航
+      navigate(`/basic-data/retail-packages/edit/${packageId}`);
+    } else {
+      // 桌面端使用对话框
+      setEditPackageId(packageId);
+      setEditorMode('edit');
+      setEditorOpen(true);
+    }
   };
 
   const handleCopy = (packageId: string) => {
-    setEditPackageId(packageId);
-    setEditorMode('copy');
-    setEditorOpen(true);
+    if (isMobile) {
+      // 移动端使用路由导航
+      navigate(`/basic-data/retail-packages/copy/${packageId}`);
+    } else {
+      // 桌面端使用对话框
+      setEditPackageId(packageId);
+      setEditorMode('copy');
+      setEditorOpen(true);
+    }
   };
 
   const handleCreate = () => {
-    setEditPackageId(undefined);
-    setEditorMode('create');
-    setEditorOpen(true);
+    if (isMobile) {
+      // 移动端使用路由导航
+      navigate('/basic-data/retail-packages/create');
+    } else {
+      // 桌面端使用对话框
+      setEditPackageId(undefined);
+      setEditorMode('create');
+      setEditorOpen(true);
+    }
   };
 
   const handleSave = async (data: any, asDraft: boolean) => {
@@ -264,19 +346,39 @@ const RetailPackagePage: React.FC = () => {
     };
 
     try {
+        let savedPackageId = editPackageId;
+
         if (editorMode === 'edit') {
             await apiClient.put(`/api/v1/retail-packages/${editPackageId}`, payload);
             showSnackbar('套餐更新成功', 'success');
         } else { // create or copy mode
-            await apiClient.post('/api/v1/retail-packages', payload);
+            const response = await apiClient.post('/api/v1/retail-packages', payload);
+            savedPackageId = response.data.id || response.data._id; // 获取新创建的套餐ID
             if (editorMode === 'copy') {
                 showSnackbar('套餐复制成功', 'success');
             } else {
                 showSnackbar('套餐创建成功', 'success');
             }
         }
-        setEditorOpen(false);
-        fetchPackages(); // Refresh the list
+
+        if (isMobile) {
+            // 移动端保存成功后的导航逻辑
+            if (isCreateView) {
+                // 新增成功后返回列表
+                navigate('/basic-data/retail-packages');
+            } else if (isEditView || isCopyView) {
+                // 编辑/复制成功后返回详情
+                if (savedPackageId) {
+                    navigate(`/basic-data/retail-packages/view/${savedPackageId}`);
+                } else {
+                    navigate('/basic-data/retail-packages');
+                }
+            }
+        } else {
+            // 桌面端关闭对话框并刷新列表
+            setEditorOpen(false);
+            fetchPackages(); // Refresh the list
+        }
     } catch (error: any) {
         console.error("Failed to save package", error);
         const errorMsg = error.response?.data?.detail || '操作失败，请重试';
@@ -323,6 +425,103 @@ const RetailPackagePage: React.FC = () => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
+
+  // 移动端：渲染新增页面
+  if (isMobile && isCreateView) {
+    return (
+      <Box sx={{ width: '100%' }}>
+        {/* 返回按钮和标题 */}
+        <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton onClick={handleBackToList} size="small">
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography variant="h6">新增套餐</Typography>
+          </Box>
+        </Paper>
+
+        {/* 套餐新增内容 */}
+        <PackageEditorDialog
+          open={true}
+          mode="create"
+          packageId={undefined}
+          onClose={handleBackToList}
+          onSave={handleSave}
+        />
+      </Box>
+    );
+  }
+
+  // 移动端：渲染详情页面
+  if (isMobile && isDetailView) {
+    return (
+      <Box sx={{ width: '100%' }}>
+        {/* 返回按钮和标题 */}
+        <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton onClick={handleBackToList} size="small">
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography variant="h6">套餐详情</Typography>
+          </Box>
+        </Paper>
+
+        {/* 套餐详情内容 */}
+        {mobilePackageLoading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+            <CircularProgress />
+          </Box>
+        ) : mobilePackageError ? (
+          <Alert severity="error">{mobilePackageError}</Alert>
+        ) : mobilePackageData ? (
+          <PackageDetailsDialog
+            open={true}
+            packageId={getPackageId(mobilePackageData)}
+            onClose={handleBackToList}
+            onEdit={(packageId) => navigate(`/basic-data/retail-packages/edit/${packageId}`)}
+            onCopy={(packageId) => navigate(`/basic-data/retail-packages/copy/${packageId}`)}
+          />
+        ) : null}
+      </Box>
+    );
+  }
+
+  // 移动端：渲染编辑页面
+  if (isMobile && (isEditView || isCopyView)) {
+    const mode = isEditView ? 'edit' : 'copy';
+    return (
+      <Box sx={{ width: '100%' }}>
+        {/* 返回按钮和标题 */}
+        <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton onClick={handleBackToList} size="small">
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography variant="h6">
+              {mode === 'edit' ? '编辑套餐' : '复制套餐'}
+            </Typography>
+          </Box>
+        </Paper>
+
+        {/* 套餐编辑内容 */}
+        {mobilePackageLoading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+            <CircularProgress />
+          </Box>
+        ) : mobilePackageError ? (
+          <Alert severity="error">{mobilePackageError}</Alert>
+        ) : mobilePackageData ? (
+          <PackageEditorDialog
+            open={true}
+            mode={mode}
+            packageId={currentPackageId}
+            onClose={handleBackToList}
+            onSave={handleSave}
+          />
+        ) : null}
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -673,9 +872,23 @@ const RetailPackagePage: React.FC = () => {
               onPageChange={handleChangePage}
               rowsPerPage={rowsPerPage}
               onRowsPerPageChange={handleChangeRowsPerPage}
-              rowsPerPageOptions={[5, 10, 20]}
-              labelRowsPerPage="每页行数:"
-              labelDisplayedRows={({ from, to, count }) => `${from}-${to} 共 ${count} 条`}
+              rowsPerPageOptions={isMobile ? [10, 20] : [5, 10, 20]}
+              labelRowsPerPage={isMobile ? "行数:" : "每页行数:"}
+              labelDisplayedRows={({ from, to, count }) =>
+                isMobile ? `${from}-${to}/${count}` : `${from}-${to} 共 ${count} 条`
+              }
+              sx={{
+                '& .MuiTablePagination-toolbar': {
+                  paddingLeft: { xs: 1, sm: 2 },
+                  paddingRight: { xs: 1, sm: 2 },
+                },
+                '& .MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                },
+                '& .MuiTablePagination-input': {
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                }
+              }}
             />
           </Paper>
 

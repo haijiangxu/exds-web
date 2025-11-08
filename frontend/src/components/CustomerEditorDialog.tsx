@@ -499,100 +499,107 @@ export const CustomerEditorDialog: React.FC<CustomerEditorDialogProps> = ({
                                     </Select>
                                 </FormControl>
                             </Grid>
-                            <Grid size={{ xs: 12, md: 6 }}>
-                                <FormControl fullWidth disabled={isReadOnly}>
-                                    <InputLabel>地区</InputLabel>
-                                    <Select
-                                        value={formData.region || ''}
-                                        label="地区"
-                                        onChange={(e) => handleFieldChange('region', e.target.value)}
-                                    >
-                                        {administrativeDivisions.map((region) => (
-                                            <MenuItem key={region.city} value={region.city}>
-                                                {region.city}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid size={{ xs: 12, md: 6 }}>
-                                <FormControl fullWidth disabled={isReadOnly || !formData.region}>
-                                    <InputLabel>区县</InputLabel>
-                                    <Select
-                                        value={formData.district || ''}
-                                        label="区县"
-                                        onChange={(e) => handleFieldChange('district', e.target.value)}
-                                    >
-                                        {availableDistricts.map((district) => (
-                                            <MenuItem key={district} value={district}>
-                                                {district}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid size={{ xs: 12 }}>
-                                <TextField
-                                    fullWidth
-                                    label="详细地址"
-                                    multiline
-                                    rows={2}
-                                    disabled={isReadOnly}
-                                    value={formData.address || ''}
-                                    onChange={(e) => handleFieldChange('address', e.target.value)}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, md: 6 }}>
-                                <TextField
-                                    fullWidth
-                                    label="经度"
-                                    type="number"
-                                    inputProps={{
-                                        step: "any",
-                                        min: -180,
-                                        max: 180
-                                    }}
-                                    disabled={isReadOnly}
-                                    value={formData.location?.coordinates[0] || ''}
-                                    onChange={(e) => {
-                                        const longitude = parseFloat(e.target.value);
-                                        const latitude = formData.location?.coordinates[1];
-                                        if (!isNaN(longitude)) {
-                                            handleFieldChange('location', {
-                                                type: "Point",
-                                                coordinates: [longitude, latitude || 0]
-                                            });
-                                        }
-                                    }}
-                                    placeholder="例如: 115.89215"
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, md: 6 }}>
-                                <TextField
-                                    fullWidth
-                                    label="纬度"
-                                    type="number"
-                                    inputProps={{
-                                        step: "any",
-                                        min: -90,
-                                        max: 90
-                                    }}
-                                    disabled={isReadOnly}
-                                    value={formData.location?.coordinates[1] || ''}
-                                    onChange={(e) => {
-                                        const latitude = parseFloat(e.target.value);
-                                        const longitude = formData.location?.coordinates[0];
-                                        if (!isNaN(latitude)) {
-                                            handleFieldChange('location', {
-                                                type: "Point",
-                                                coordinates: [longitude || 0, latitude]
-                                            });
-                                        }
-                                    }}
-                                    placeholder="例如: 28.67649"
-                                />
-                            </Grid>
+                          </Grid>
+                </Paper>
+
+                {/* 地理位置信息分区 */}
+                <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
+                    <Typography variant="h6" gutterBottom>地理位置信息</Typography>
+                    <Grid container spacing={{ xs: 1, sm: 2 }}>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth disabled={isReadOnly}>
+                                <InputLabel>地市</InputLabel>
+                                <Select
+                                    value={formData.region || ''}
+                                    label="地市"
+                                    onChange={(e) => handleFieldChange('region', e.target.value)}
+                                >
+                                    {administrativeDivisions.map((region) => (
+                                        <MenuItem key={region.city} value={region.city}>
+                                            {region.city}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
                         </Grid>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth disabled={isReadOnly || !formData.region}>
+                                <InputLabel>区县</InputLabel>
+                                <Select
+                                    value={formData.district || ''}
+                                    label="区县"
+                                    onChange={(e) => handleFieldChange('district', e.target.value)}
+                                >
+                                    {availableDistricts.map((district) => (
+                                        <MenuItem key={district} value={district}>
+                                            {district}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <TextField
+                                fullWidth
+                                label="详细地址"
+                                multiline
+                                rows={2}
+                                disabled={isReadOnly}
+                                value={formData.address || ''}
+                                onChange={(e) => handleFieldChange('address', e.target.value)}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                fullWidth
+                                label="经度"
+                                type="number"
+                                inputProps={{
+                                    step: "any",
+                                    min: -180,
+                                    max: 180
+                                }}
+                                disabled={isReadOnly}
+                                value={formData.location?.coordinates[0] || ''}
+                                onChange={(e) => {
+                                    const longitude = parseFloat(e.target.value);
+                                    const latitude = formData.location?.coordinates[1];
+                                    if (!isNaN(longitude)) {
+                                        handleFieldChange('location', {
+                                            type: "Point",
+                                            coordinates: [longitude, latitude || 0]
+                                        });
+                                    }
+                                }}
+                                placeholder="例如: 115.89215"
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                fullWidth
+                                label="纬度"
+                                type="number"
+                                inputProps={{
+                                    step: "any",
+                                    min: -90,
+                                    max: 90
+                                }}
+                                disabled={isReadOnly}
+                                value={formData.location?.coordinates[1] || ''}
+                                onChange={(e) => {
+                                    const latitude = parseFloat(e.target.value);
+                                    const longitude = formData.location?.coordinates[0];
+                                    if (!isNaN(latitude)) {
+                                        handleFieldChange('location', {
+                                            type: "Point",
+                                            coordinates: [longitude || 0, latitude]
+                                        });
+                                    }
+                                }}
+                                placeholder="例如: 28.67649"
+                            />
+                        </Grid>
+                    </Grid>
                 </Paper>
 
                 {/* 联系信息分区 */}

@@ -36,7 +36,8 @@
       "mcp__chrome-devtools__list_console_messages",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc2MjU5Nzc5Nn0.YOamhyqLSn3-_mAQkAoFL9C_o_8wbkVEZUNg-o6XCF0\" curl:*)",
       "Bash(npm start:*)",
-      "Bash(netsh:*)"
+      "Bash(netsh:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

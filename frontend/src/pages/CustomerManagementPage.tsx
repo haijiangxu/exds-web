@@ -29,17 +29,37 @@ import {
     Edit as EditIcon,
     Delete as DeleteIcon,
     ContentCopy as CopyIcon,
-    Search as SearchIcon
+    Search as SearchIcon,
+    ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
+import { useParams, useNavigate, useLocation, matchPath } from 'react-router-dom';
 import { Customer, CustomerListItem, CustomerListParams, PaginatedResponse } from '../api/customer';
 import { CustomerEditorDialog } from '../components/CustomerEditorDialog';
 import { CustomerDetailsDialog } from '../components/CustomerDetailsDialog';
 import customerApi from '../api/customer';
 
 export const CustomerManagementPage: React.FC = () => {
+    // 路由参数和导航
+    const params = useParams<{ customerId?: string }>();
+    const navigate = useNavigate();
+    const location = useLocation();
+
     // 响应式设计
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+    // 使用 matchPath 解析当前路由状态
+    const createMatch = matchPath('/customer/profiles/create', location.pathname);
+    const viewMatch = matchPath('/customer/profiles/view/:customerId', location.pathname);
+    const editMatch = matchPath('/customer/profiles/edit/:customerId', location.pathname);
+    const copyMatch = matchPath('/customer/profiles/copy/:customerId', location.pathname);
+
+    // 根据当前路由确定状态
+    const isCreateView = !!createMatch;
+    const isDetailView = !!viewMatch;
+    const isEditView = !!editMatch;
+    const isCopyView = !!copyMatch;
+    const currentCustomerId = params.customerId;
 
     // 列表数据状态
     const [customers, setCustomers] = useState<CustomerListItem[]>([]);
@@ -53,57 +73,89 @@ export const CustomerManagementPage: React.FC = () => {
 
     // 查询参数状态
     const [searchParams, setSearchParams] = useState<CustomerListParams>({
-        page: 1,
-        size: 10,
-        search: '',
+        keyword: '',
         user_type: '',
         industry: '',
         region: '',
         status: undefined
     });
 
-    // 编辑对话框状态
+    // 编辑对话框状态 (仅桌面端使用)
     const [dialogOpen, setDialogOpen] = useState(false);
     const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'view' | 'copy'>('create');
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
-    // 客户详情对话框状态
+    // 客户详情对话框状态 (仅桌面端使用)
     const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
     const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
+    // 移动端客户详情状态
+    const [mobileCustomerData, setMobileCustomerData] = useState<Customer | null>(null);
+    const [mobileCustomerLoading, setMobileCustomerLoading] = useState(false);
+    const [mobileCustomerError, setMobileCustomerError] = useState<string | null>(null);
+
     // 加载客户列表
-    const loadCustomers = async (params: CustomerListParams = searchParams) => {
+    const loadCustomers = async () => {
         setLoading(true);
         setError(null);
 
         try {
-            // 修正API参数，与零售套餐页面保持一致
-            const apiParams = {
-                ...params,
-                page_size: params.size || 10, // 使用 page_size 而不是 size
-                size: undefined // 移除 size 参数
+            // 构造API参数，使用当前状态
+            const params = {
+                keyword: searchParams.keyword,
+                user_type: searchParams.user_type,
+                industry: searchParams.industry,
+                region: searchParams.region,
+                status: searchParams.status,
+                page: page + 1, // API is 1-indexed
+                page_size: rowsPerPage, // 后端使用page_size而不是size
             };
 
-            const response = await customerApi.getCustomers(apiParams);
+            const response = await customerApi.getCustomers(params);
             const data: PaginatedResponse<CustomerListItem> = response.data;
 
             setCustomers(data.items);
-            setPage(data.page - 1); // Material-UI pagination is 0-based
-            setRowsPerPage(data.size || 10); // 添加默认值保护
             setTotalCount(data.total);
         } catch (err: any) {
             console.error('加载客户列表失败:', err);
             setError(err.response?.data?.detail || err.message || '加载客户列表失败');
             setCustomers([]);
+            setTotalCount(0);
         } finally {
             setLoading(false);
         }
     };
 
-    // 初始加载
+    // 加载移动端客户详情数据
+    const loadMobileCustomerData = async (customerId: string) => {
+        setMobileCustomerLoading(true);
+        setMobileCustomerError(null);
+        try {
+            const response = await customerApi.getCustomer(customerId);
+            setMobileCustomerData(response.data);
+        } catch (err: any) {
+            console.error('加载客户详情失败:', err);
+            setMobileCustomerError(err.response?.data?.detail || err.message || '加载客户详情失败');
+            setMobileCustomerData(null);
+        } finally {
+            setMobileCustomerLoading(false);
+        }
+    };
+
+    // 根据路由参数加载移动端客户数据
+    useEffect(() => {
+        if (currentCustomerId && (isDetailView || isEditView || isCopyView)) {
+            loadMobileCustomerData(currentCustomerId);
+        } else {
+            setMobileCustomerData(null);
+            setMobileCustomerError(null);
+        }
+    }, [currentCustomerId, isDetailView, isEditView, isCopyView]);
+
+    // 监听搜索参数变化自动重新加载
     useEffect(() => {
         loadCustomers();
-    }, []);
+    }, [searchParams, page, rowsPerPage]);
 
     // 分页处理函数
     const handleChangePage = (event: unknown, newPage: number) => {
@@ -114,7 +166,6 @@ export const CustomerManagementPage: React.FC = () => {
             size: rowsPerPage // 保持当前的每页行数
         };
         setSearchParams(newParams);
-        loadCustomers(newParams);
     };
 
     const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,32 +178,47 @@ export const CustomerManagementPage: React.FC = () => {
             size: newSize
         };
         setSearchParams(newParams);
-        loadCustomers(newParams);
     };
 
-    // 处理搜索
-    const handleSearch = () => {
-        const newParams = {
-            ...searchParams,
-            page: 1 // 重置到第一页
-        };
-        setSearchParams(newParams);
-        loadCustomers(newParams);
-    };
-
+  
     // 处理筛选条件变化（自动查询）
     const handleFilterChange = (field: keyof CustomerListParams, value: string | undefined) => {
         const newParams = {
             ...searchParams,
             [field]: value,
-            page: 1 // 重置到第一页
         };
         setSearchParams(newParams);
-        loadCustomers(newParams); // 自动触发查询
+        setPage(0); // Material-UI pagination is 0-based，重置到第一页
+    };
+
+    // 搜索函数
+    const handleSearch = () => {
+        setPage(0); // Ensure search starts from the first page
+        loadCustomers();
     };
 
     // 打开客户对话框
     const handleOpenDialog = async (mode: 'create' | 'edit' | 'view' | 'copy', customer?: CustomerListItem) => {
+        if (isMobile) {
+            // 移动端使用路由导航
+            if (mode === 'create') {
+                // 移动端新增也使用独立路由
+                navigate('/customer/profiles/create');
+            } else if (customer && (mode === 'view' || mode === 'edit' || mode === 'copy')) {
+                let route = `/customer/profiles`;
+                if (mode === 'view') {
+                    route += `/view/${customer.id}`;
+                } else if (mode === 'edit') {
+                    route += `/edit/${customer.id}`;
+                } else if (mode === 'copy') {
+                    route += `/copy/${customer.id}`;
+                }
+                navigate(route);
+            }
+            return;
+        }
+
+        // 桌面端使用对话框
         if (mode === 'view' && customer) {
             // 查看模式使用新的详情对话框
             setSelectedCustomerId(customer.id);
@@ -194,61 +260,88 @@ export const CustomerManagementPage: React.FC = () => {
 
     // 从详情对话框处理编辑
     const handleEditFromDetails = (customerId: string) => {
-        // 关闭详情对话框，打开编辑对话框
-        setDetailsDialogOpen(false);
-        setSelectedCustomerId(null);
+        if (isMobile) {
+            // 移动端使用路由导航
+            navigate(`/customer/profiles/edit/${customerId}`);
+        } else {
+            // 桌面端关闭详情对话框，打开编辑对话框
+            setDetailsDialogOpen(false);
+            setSelectedCustomerId(null);
 
-        // 获取客户数据并打开编辑对话框
-        customerApi.getCustomer(customerId)
-            .then(response => {
-                setSelectedCustomer(response.data);
-                setDialogMode('edit');
-                setDialogOpen(true);
-            })
-            .catch(err => {
-                console.error('获取客户详情失败:', err);
-                setError(err.response?.data?.detail || err.message || '获取客户详情失败');
-            });
+            // 获取客户数据并打开编辑对话框
+            customerApi.getCustomer(customerId)
+                .then(response => {
+                    setSelectedCustomer(response.data);
+                    setDialogMode('edit');
+                    setDialogOpen(true);
+                })
+                .catch(err => {
+                    console.error('获取客户详情失败:', err);
+                    setError(err.response?.data?.detail || err.message || '获取客户详情失败');
+                });
+        }
     };
 
     // 从详情对话框处理复制
     const handleCopyFromDetails = (customerId: string) => {
-        // 关闭详情对话框，打开复制对话框
-        setDetailsDialogOpen(false);
-        setSelectedCustomerId(null);
+        if (isMobile) {
+            // 移动端使用路由导航
+            navigate(`/customer/profiles/copy/${customerId}`);
+        } else {
+            // 桌面端关闭详情对话框，打开复制对话框
+            setDetailsDialogOpen(false);
+            setSelectedCustomerId(null);
 
-        // 获取客户数据并打开复制对话框
-        customerApi.getCustomer(customerId)
-            .then(response => {
-                setSelectedCustomer(response.data);
-                setDialogMode('copy');
-                setDialogOpen(true);
-            })
-            .catch(err => {
-                console.error('获取客户详情失败:', err);
-                setError(err.response?.data?.detail || err.message || '获取客户详情失败');
-            });
+            // 获取客户数据并打开复制对话框
+            customerApi.getCustomer(customerId)
+                .then(response => {
+                    setSelectedCustomer(response.data);
+                    setDialogMode('copy');
+                    setDialogOpen(true);
+                })
+                .catch(err => {
+                    console.error('获取客户详情失败:', err);
+                    setError(err.response?.data?.detail || err.message || '获取客户详情失败');
+                });
+        }
+    };
+
+    // 移动端返回列表
+    const handleBackToList = () => {
+        navigate('/customer/profiles');
     };
 
     // 重置筛选条件
     const handleResetFilters = () => {
         const resetParams: CustomerListParams = {
-            page: 1,
-            size: 10,
-            search: '',
+            keyword: '',
             user_type: '',
             industry: '',
             region: '',
             status: undefined
         };
         setSearchParams(resetParams);
-        loadCustomers(resetParams);
+        setPage(0); // 重置页码
+        loadCustomers();
     };
 
     // 保存成功后的回调
     const handleSaveSuccess = () => {
-        handleCloseDialog();
-        loadCustomers(); // 重新加载列表
+        if (isMobile && isCreateView) {
+            // 移动端新增成功后返回列表
+            navigate('/customer/profiles');
+        } else if (isMobile && (isEditView || isCopyView)) {
+            // 移动端编辑/复制成功后返回详情页
+            if (currentCustomerId) {
+                navigate(`/customer/profiles/view/${currentCustomerId}`);
+            } else {
+                navigate('/customer/profiles');
+            }
+        } else {
+            // 桌面端成功后关闭对话框并重新加载列表
+            handleCloseDialog();
+            loadCustomers(); // 重新加载列表
+        }
     };
 
     // 删除客户
@@ -337,7 +430,7 @@ export const CustomerManagementPage: React.FC = () => {
                             <Typography variant="body2">{customer.voltage || '-'}</Typography>
                         </Box>
                         <Box sx={{ flex: '1 1 45%' }}>
-                            <Typography variant="body2" color="text.secondary">地区:</Typography>
+                            <Typography variant="body2" color="text.secondary">地市:</Typography>
                             <Typography variant="body2">{customer.region || '-'}</Typography>
                         </Box>
                         <Box sx={{ flex: '1 1 45%' }}>
@@ -402,6 +495,103 @@ export const CustomerManagementPage: React.FC = () => {
         </Box>
     );
 
+    // 移动端：渲染新增页面
+    if (isMobile && isCreateView) {
+        return (
+            <Box sx={{ width: '100%' }}>
+                {/* 返回按钮和标题 */}
+                <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <IconButton onClick={handleBackToList} size="small">
+                            <ArrowBackIcon />
+                        </IconButton>
+                        <Typography variant="h6">新增客户</Typography>
+                    </Box>
+                </Paper>
+
+                {/* 客户新增内容 */}
+                <CustomerEditorDialog
+                    open={true}
+                    mode="create"
+                    customer={null}
+                    onClose={handleBackToList}
+                    onSave={handleSaveSuccess}
+                />
+            </Box>
+        );
+    }
+
+    // 移动端：渲染详情页面
+    if (isMobile && isDetailView) {
+        return (
+            <Box sx={{ width: '100%' }}>
+                {/* 返回按钮和标题 */}
+                <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <IconButton onClick={handleBackToList} size="small">
+                            <ArrowBackIcon />
+                        </IconButton>
+                        <Typography variant="h6">客户详情</Typography>
+                    </Box>
+                </Paper>
+
+                {/* 客户详情内容 */}
+                {mobileCustomerLoading ? (
+                    <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+                        <CircularProgress />
+                    </Box>
+                ) : mobileCustomerError ? (
+                    <Alert severity="error">{mobileCustomerError}</Alert>
+                ) : mobileCustomerData ? (
+                    <CustomerDetailsDialog
+                        open={true}
+                        customerId={mobileCustomerData.id}
+                        onClose={handleBackToList}
+                        onEdit={handleEditFromDetails}
+                        onCopy={handleCopyFromDetails}
+                    />
+                ) : null}
+            </Box>
+        );
+    }
+
+    // 移动端：渲染编辑页面
+    if (isMobile && (isEditView || isCopyView)) {
+        const mode = isEditView ? 'edit' : 'copy';
+        return (
+            <Box sx={{ width: '100%' }}>
+                {/* 返回按钮和标题 */}
+                <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <IconButton onClick={handleBackToList} size="small">
+                            <ArrowBackIcon />
+                        </IconButton>
+                        <Typography variant="h6">
+                            {mode === 'edit' ? '编辑客户' : '复制客户'}
+                        </Typography>
+                    </Box>
+                </Paper>
+
+                {/* 客户编辑内容 */}
+                {mobileCustomerLoading ? (
+                    <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+                        <CircularProgress />
+                    </Box>
+                ) : mobileCustomerError ? (
+                    <Alert severity="error">{mobileCustomerError}</Alert>
+                ) : mobileCustomerData ? (
+                    <CustomerEditorDialog
+                        open={true}
+                        mode={mode}
+                        customer={mobileCustomerData}
+                        onClose={handleBackToList}
+                        onSave={handleSaveSuccess}
+                    />
+                ) : null}
+            </Box>
+        );
+    }
+
     return (
         <Box sx={{ width: '100%' }}>
 
@@ -412,8 +602,8 @@ export const CustomerManagementPage: React.FC = () => {
                         label="客户名称"
                         variant="outlined"
                         size="small"
-                        value={searchParams.search || ''}
-                        onChange={(e) => handleFilterChange('search', e.target.value)}
+                        value={searchParams.keyword || ''}
+                        onChange={(e) => handleFilterChange('keyword', e.target.value)}
                         InputProps={{
                             startAdornment: (
                                 <InputAdornment position="start">
@@ -454,10 +644,10 @@ export const CustomerManagementPage: React.FC = () => {
                         </Select>
                     </FormControl>
                     <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
-                        <InputLabel>地区</InputLabel>
+                        <InputLabel>地市</InputLabel>
                         <Select
                             value={searchParams.region || ''}
-                            label="地区"
+                            label="地市"
                             onChange={(e) => handleFilterChange('region', e.target.value)}
                         >
                             <MenuItem value="">全部</MenuItem>
@@ -545,7 +735,7 @@ export const CustomerManagementPage: React.FC = () => {
                                     <TableCell sx={{ minWidth: 100 }}>用户类型</TableCell>
                                     <TableCell sx={{ minWidth: 100 }}>行业</TableCell>
                                     <TableCell sx={{ minWidth: 80 }}>电压等级</TableCell>
-                                    <TableCell sx={{ minWidth: 100 }}>地区</TableCell>
+                                    <TableCell sx={{ minWidth: 100 }}>地市</TableCell>
                                     <TableCell sx={{ minWidth: 120 }}>联系人</TableCell>
                                     <TableCell sx={{ minWidth: 80 }}>户号数量</TableCell>
                                     <TableCell sx={{ minWidth: 80 }}>状态</TableCell>
@@ -654,15 +844,29 @@ export const CustomerManagementPage: React.FC = () => {
 
                 {/* 分页 */}
                 <TablePagination
-                    rowsPerPageOptions={[5, 10, 20]}
+                    rowsPerPageOptions={isMobile ? [10, 20] : [5, 10, 20]}
                     component="div"
                     count={totalCount}
                     rowsPerPage={rowsPerPage || 10}
                     page={page || 0}
                     onPageChange={handleChangePage}
                     onRowsPerPageChange={handleChangeRowsPerPage}
-                    labelRowsPerPage="每页行数:"
-                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} 共 ${count} 条`}
+                    labelRowsPerPage={isMobile ? "行数:" : "每页行数:"}
+                    labelDisplayedRows={({ from, to, count }) =>
+                        isMobile ? `${from}-${to}/${count}` : `${from}-${to} 共 ${count} 条`
+                    }
+                    sx={{
+                        '& .MuiTablePagination-toolbar': {
+                            paddingLeft: { xs: 1, sm: 2 },
+                            paddingRight: { xs: 1, sm: 2 },
+                        },
+                        '& .MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                        },
+                        '& .MuiTablePagination-input': {
+                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                        }
+                    }}
                 />
             </Paper>
 

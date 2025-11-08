@@ -47,6 +47,10 @@ const ResponsiveLayout: React.FC = () => {
 
                     {/* 客户管理 */}
                     <Route path="customer/profiles" element={<CustomerManagementPage />} />
+                    <Route path="customer/profiles/create" element={<CustomerManagementPage />} />
+                    <Route path="customer/profiles/view/:customerId" element={<CustomerManagementPage />} />
+                    <Route path="customer/profiles/edit/:customerId" element={<CustomerManagementPage />} />
+                    <Route path="customer/profiles/copy/:customerId" element={<CustomerManagementPage />} />
                     <Route path="customer/retail-contracts" element={<PlaceholderPage />} />
                     <Route path="customer/load-analysis" element={<LoadAnalysisPage />} />
                     <Route path="customer/cluster-analysis" element={<PlaceholderPage />} />
@@ -88,6 +92,10 @@ const ResponsiveLayout: React.FC = () => {
                     <Route path="basic-data/grid-price" element={<GridAgencyPricePage />} />
                     <Route path="basic-data/tou-definition" element={<PlaceholderPage />} />
                     <Route path="basic-data/retail-packages" element={<RetailPackagePage />} />
+                    <Route path="basic-data/retail-packages/create" element={<RetailPackagePage />} />
+                    <Route path="basic-data/retail-packages/view/:packageId" element={<RetailPackagePage />} />
+                    <Route path="basic-data/retail-packages/edit/:packageId" element={<RetailPackagePage />} />
+                    <Route path="basic-data/retail-packages/copy/:packageId" element={<RetailPackagePage />} />
                     <Route path="basic-data/load-validation" element={<PlaceholderPage />} />
 
                     {/* 系统管理 */}
