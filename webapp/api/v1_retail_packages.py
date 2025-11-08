@@ -8,7 +8,7 @@ from webapp.tools.mongo import DATABASE
 # Corrected import path for the user dependency
 from webapp.tools.security import get_current_active_user, User
 
-router = APIRouter(prefix="/api/v1/retail-packages", tags=["Retail Packages"])
+router = APIRouter(prefix="/retail-packages", tags=["Retail Packages"])
 
 @router.post("", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def create_package(

@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from webapp.tools.mongo import DATABASE as db
-from webapp.api import v1, v1_retail_packages
+from webapp.api import v1
 
 # Import security functions and models from the new security tool
 from webapp.tools.security import (
@@ -66,7 +66,6 @@ async def login_for_access_token(request: Request, form_data: OAuth2PasswordRequ
 # Include v1 routers
 app.include_router(v1.public_router)
 app.include_router(v1.router, dependencies=[Depends(get_current_active_user)])
-app.include_router(v1_retail_packages.router, dependencies=[Depends(get_current_active_user)])
 
 @app.get("/", tags=["Root"], summary="应用根路径")
 def read_root():

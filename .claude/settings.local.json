@@ -18,7 +18,10 @@
       "Bash(tmpfrontend_build.log)",
       "Bash(taskkill:*)",
       "Bash(powershell \"Stop-Process -Id 18212 -Force\")",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(uvicorn:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc2MjU5MjMyMn0.NxzNZwG1UGbYSNmFDF7QvlTtyaNP5K6BN9xpKs7BQ7I\")",
+      "Bash(ping:*)"
     ],
     "deny": [],
     "ask": []

@@ -10,7 +10,7 @@ import statistics
 from bson import json_util
 import json
 
-from webapp.api import v1_retail_packages
+from webapp.api import v1_retail_packages, v1_customers
 from webapp.services.package_service import PackageService
 from webapp.services.pricing_engine import PricingEngine
 from webapp.services.pricing_model_service import pricing_model_service
@@ -18,6 +18,7 @@ from webapp.services.pricing_model_service import pricing_model_service
 # 创建一个API路由器
 router = APIRouter(prefix="/api/v1", tags=["v1"])
 router.include_router(v1_retail_packages.router)
+router.include_router(v1_customers.router)  # 客户管理路由
 
 # --- 集合定义 ---
 USER_COLLECTION = DATABASE['user_load_data']
