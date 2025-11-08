@@ -179,8 +179,22 @@ export const FixedLinkedFeeForm: React.FC<FixedLinkedFeeFormProps> = ({ control,
                 defaultValue=""
                 rules={{
                   required: '联动电量比例必填',
-                  min: { value: isTimeBased ? 10 : 0, message: isTimeBased ? '不低于10%' : '不得为负' },
-                  max: { value: 20, message: '不高于20%' }
+                  validate: (value) => {
+                    const numValue = parseFloat(value);
+                    if (isNaN(numValue)) {
+                      return '请输入有效的数字';
+                    }
+                    if (isTimeBased) {
+                      if (numValue < 10 || numValue > 20) {
+                        return '分时套餐联动电量比例应在10%-20%之间';
+                      }
+                    } else {
+                      if (numValue < 0 || numValue > 20) {
+                        return '不分时套餐联动电量比例应在0%-20%之间';
+                      }
+                    }
+                    return true;
+                  }
                 }}
                 render={({ field, fieldState }) => (
                   <TextField
@@ -253,19 +267,6 @@ export const FixedLinkedFeeForm: React.FC<FixedLinkedFeeFormProps> = ({ control,
           </FormHelperText>
         </Paper>
       </Grid>
-
-      {/* 提示信息 */}
-      {isTimeBased && (
-        <Grid size={{ xs: 12 }}>
-          <Alert severity="info">
-            <Typography variant="body2">
-              <strong>分时套餐注意事项：</strong><br />
-              1. 各时段结算价格浮动比例如低于463号文通知规定，按照文件规定浮动比例结算<br />
-              2. 月度结算均价封顶：对比参考价上浮不超过5%（非尖峰月份）或10%（尖峰月份）
-            </Typography>
-          </Alert>
-        </Grid>
-      )}
     </Grid>
   );
 };

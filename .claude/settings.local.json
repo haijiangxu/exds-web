@@ -14,7 +14,8 @@
       "Bash(findstr:*)",
       "Bash(python:*)",
       "Bash(timeout /t 5)",
-      "Bash(nul)"
+      "Bash(nul)",
+      "Bash(tmpfrontend_build.log)"
     ],
     "deny": [],
     "ask": []

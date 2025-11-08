@@ -94,7 +94,8 @@ async def copy_package(
 async def list_packages(
     keyword: Optional[str] = None,
     package_type: Optional[str] = None,
-    pricing_mode: Optional[str] = None,
+    is_green_power: Optional[str] = None,
+    model_code: Optional[str] = None,
     status: Optional[str] = None,
     page: int = 1,
     page_size: int = 20,
@@ -106,7 +107,8 @@ async def list_packages(
         filters={
             "keyword": keyword,
             "package_type": package_type,
-            "pricing_mode": pricing_mode,
+            "is_green_power": is_green_power,
+            "model_code": model_code,
             "status": status
         },
         page=page,

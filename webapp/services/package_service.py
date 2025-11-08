@@ -90,6 +90,13 @@ class PackageService:
             query["package_name"] = {"$regex": filters["keyword"], "$options": "i"}
         if filters.get("package_type"):
             query["package_type"] = filters["package_type"]
+        if filters.get("is_green_power"):
+            # 将字符串 "true"/"false" 转换为布尔值
+            is_green_power_str = filters["is_green_power"].lower()
+            if is_green_power_str == "true":
+                query["is_green_power"] = True
+            elif is_green_power_str == "false":
+                query["is_green_power"] = False
         if filters.get("model_code"):
             query["model_code"] = filters["model_code"]
         if filters.get("status"):

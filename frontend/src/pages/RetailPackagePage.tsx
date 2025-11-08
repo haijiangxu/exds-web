@@ -11,14 +11,15 @@ import apiClient from '../api/client';
 import { format } from 'date-fns';
 import { PackageEditorDialog } from '../components/PackageEditorDialog';
 import { PackageDetailsDialog } from '../components/PackageDetailsDialog';
+import usePricingModels from '../hooks/usePricingModels'; // 导入Hook
 
 interface Package {
-  id?: string;          // 可选，新后端返回
-  _id?: string;         // 可选，旧后端返回
+  id?: string;
+  _id?: string;
   package_name: string;
   package_type: 'time_based' | 'non_time_based';
   is_green_power: boolean;
-  pricing_mode: 'fixed_linked' | 'price_spread';
+  model_code: string; // <--- 更新
   status: 'draft' | 'active' | 'archived';
   created_at: string;
   updated_at: string;
@@ -55,8 +56,8 @@ const RetailPackagePage: React.FC = () => {
   const [filters, setFilters] = useState({
     keyword: '',
     package_type: '',
-    is_green_power: '',  // 绿电筛选
-    pricing_mode: '', // Added pricing_mode filter
+    is_green_power: '',
+    model_code: '', // <--- 更新
     status: ''
   });
   const [page, setPage] = useState(0);
@@ -98,6 +99,8 @@ const RetailPackagePage: React.FC = () => {
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const { models: pricingModels, getModelDisplayName } = usePricingModels();
 
   // 状态判断函数（根据状态机规则）
   const canEdit = (status: string) => status === 'draft';
@@ -171,7 +174,7 @@ const RetailPackagePage: React.FC = () => {
       keyword: '',
       package_type: '',
       is_green_power: '',
-      pricing_mode: '',
+      model_code: '',
       status: ''
     });
     setPage(0);
@@ -370,16 +373,17 @@ const RetailPackagePage: React.FC = () => {
               </Select>
           </FormControl>
           <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
-              <InputLabel>定价模式</InputLabel>
+              <InputLabel>定价模型</InputLabel>
               <Select
-                  name="pricing_mode"
-                  value={filters.pricing_mode}
+                  name="model_code"
+                  value={filters.model_code}
                   onChange={handleFilterChange}
-                  label="定价模式"
+                  label="定价模型"
               >
                   <MenuItem value="">所有</MenuItem>
-                  <MenuItem value="fixed_linked">固定+联动</MenuItem>
-                  <MenuItem value="price_spread">价差分成</MenuItem>
+                  {pricingModels.map(model => (
+                      <MenuItem key={model.model_code} value={model.model_code}>{model.display_name}</MenuItem>
+                  ))}
               </Select>
           </FormControl>
           <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
@@ -430,7 +434,7 @@ const RetailPackagePage: React.FC = () => {
                         <TableCell>套餐名称</TableCell>
                         <TableCell>套餐类型</TableCell>
                         <TableCell>绿电套餐</TableCell>
-                        <TableCell>定价模式</TableCell>
+                        <TableCell>定价模型</TableCell>
                         <TableCell>状态</TableCell>
                         <TableCell>创建时间</TableCell>
                         <TableCell align="right">操作</TableCell>
@@ -476,8 +480,8 @@ const RetailPackagePage: React.FC = () => {
                       )}
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" color="text.secondary">定价模式:</Typography>
-                      <Chip label={pkg.pricing_mode === 'fixed_linked' ? '固定+联动' : '价差分成'} size="small" color="primary" />
+                      <Typography variant="body2" color="text.secondary">定价模型:</Typography>
+                      <Chip label={getModelDisplayName(pkg.model_code)} size="small" color="primary" />
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body2" color="text.secondary">状态:</Typography>
@@ -556,7 +560,7 @@ const RetailPackagePage: React.FC = () => {
                       <TableCell>套餐名称</TableCell>
                       <TableCell>套餐类型</TableCell>
                       <TableCell>绿电套餐</TableCell>
-                      <TableCell>定价模式</TableCell>
+                      <TableCell>定价模型</TableCell>
                       <TableCell>状态</TableCell>
                       <TableCell>创建时间</TableCell>
                       <TableCell align="right">操作</TableCell>
@@ -592,7 +596,7 @@ const RetailPackagePage: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <Chip
-                              label={pkg.pricing_mode === 'fixed_linked' ? '固定+联动' : '价差分成'}
+                              label={getModelDisplayName(pkg.model_code)}
                               size="small"
                               color="primary"
                             />

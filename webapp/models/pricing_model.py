@@ -31,5 +31,7 @@ class PricingModelListItem(BaseModel):
     package_type: Literal["time_based", "non_time_based"]
     pricing_mode: str
     floating_type: Optional[Literal["fee", "price"]]
+    formula: str
+    description: str
     enabled: bool
     sort_order: int

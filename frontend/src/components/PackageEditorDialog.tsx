@@ -10,6 +10,7 @@ import { usePackageForm, PackageFormData } from '../hooks/usePackageForm';
 import { Control, Controller } from 'react-hook-form';
 import apiClient from '../api/client';
 import { PricingConfigForm } from './pricing/PricingConfigForm';
+import usePricingModels from '../hooks/usePricingModels'; // 导入共享Hook
 
 // 绿电提示文本
 const GREEN_POWER_HINT = `1. 套餐选择开启绿电合同，用户下单时需录入绿电合同电量，售电公司在批发侧成交的绿电合同电量按此电量等比例分摊给签署了绿电套餐的零售用户。
@@ -18,20 +19,6 @@ const GREEN_POWER_HINT = `1. 套餐选择开启绿电合同，用户下单时需
 
 // 绿电警告文字
 const GREEN_POWER_WARNING = "按照所代理零售用户月度零售套餐约定的绿色电力环境价值从高到低进行排序，交易电量优先分配环境价值高的零售用户";
-
-// 封顶价格说明
-const PRICE_CAP_DESCRIPTION = "零售用户月度结算均价封顶，零售用户月度结算均价对比参考价（按照电网代理购电发布的电力市场月度交易均价(当月平均上网电价)）上浮不超过5%(非尖峰月份）、上浮不超过10%（尖峰月份），若零售套餐结算价格高于封顶价格时，按照封顶价格结算。";
-
-// 定价模型接口
-interface PricingModel {
-  model_code: string;
-  display_name: string;
-  package_type: 'time_based' | 'non_time_based';
-  pricing_mode: string;
-  floating_type: string;
-  formula?: string;
-  description?: string;
-}
 
 interface PackageEditorDialogProps {
   open: boolean;
@@ -48,8 +35,9 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
   const { control, handleSubmit, watch, reset, setError, clearErrors, setValue } = usePackageForm();
   const [loadingPackageData, setLoadingPackageData] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [pricingModels, setPricingModels] = useState<PricingModel[]>([]);
-  const [loadingModels, setLoadingModels] = useState(false);
+  
+  const { models: allPricingModels, loading: loadingModels } = usePricingModels();
+  const [pricingModels, setPricingModels] = useState<any[]>([]);
 
   const packageType = watch('package_type');
   const modelCode = watch('model_code');
@@ -94,27 +82,22 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
     }
   }, [open, packageId, mode, reset, onClose]);
 
-  // 根据 package_type 加载可用的定价模型列表
+  // 根据 package_type 筛选可用的定价模型列表
   useEffect(() => {
-    if (!packageType) return;
+    if (!packageType || loadingModels) return;
 
-    setLoadingModels(true);
-    apiClient.get(`/api/v1/pricing-models?package_type=${packageType}`)
-      .then(response => {
-        setPricingModels(response.data);
-        // 如果当前没有选中模型，且有可用模型，自动选中第一个
-        if (!modelCode && response.data.length > 0) {
-          setValue('model_code', response.data[0].model_code);
-        }
-      })
-      .catch(error => {
-        console.error("Failed to fetch pricing models", error);
-        setPricingModels([]);
-      })
-      .finally(() => {
-        setLoadingModels(false);
-      });
-  }, [packageType, setValue]);
+    const filtered = allPricingModels.filter(m => 
+        m.package_type === packageType || m.package_type === 'all'
+    );
+    setPricingModels(filtered);
+
+    // 如果当前选中的模型在筛选后的列表中不存在，则清空
+    const currentModelStillValid = filtered.some(m => m.model_code === modelCode);
+    if (!currentModelStillValid) {
+        setValue('model_code', '');
+    }
+
+  }, [packageType, allPricingModels, loadingModels, modelCode, setValue]);
 
   // 当 package_type 改变时，清空 model_code 和 pricing_config
   useEffect(() => {
@@ -249,25 +232,19 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
             )}
           </Grid>
 
-          {/* 显示选中模型的公式和说明 */}
+          {/* 显示选中模型的计算公式 */}
           {modelCode && pricingModels.length > 0 && (
             <Grid size={{ xs: 12 }}>
               {(() => {
                 const selectedModel = pricingModels.find(m => m.model_code === modelCode);
-                if (!selectedModel) return null;
+                if (!selectedModel || !selectedModel.formula) return null;
 
                 return (
                   <Alert severity="info" sx={{ mt: 1 }}>
-                    {selectedModel.formula && (
-                      <Typography variant="body2" sx={{ mb: 1 }}>
-                        <strong>计算公式：</strong>{selectedModel.formula}
-                      </Typography>
-                    )}
-                    {selectedModel.description && (
-                      <Typography variant="caption" component="div">
-                        <div dangerouslySetInnerHTML={{ __html: selectedModel.description }} />
-                      </Typography>
-                    )}
+                    <Typography variant="body2">
+                      <strong>计算公式：</strong>
+                      <span dangerouslySetInnerHTML={{ __html: selectedModel.formula }} />
+                    </Typography>
                   </Alert>
                 );
               })()}
@@ -288,83 +265,25 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
       );
     }
 
+    const selectedModel = pricingModels.find(m => m.model_code === modelCode);
+
     return (
       <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
         <Typography variant="h6" gutterBottom>定价配置</Typography>
         <PricingConfigForm modelCode={modelCode} control={control} />
+
+        {/* 显示模型说明 */}
+        {selectedModel?.description && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            <Typography variant="body2" component="div">
+              <strong>模型说明：</strong>
+              <div dangerouslySetInnerHTML={{ __html: selectedModel.description }} />
+            </Typography>
+          </Alert>
+        )}
       </Paper>
     );
   };
-
-  // 渲染绿电配置区
-  const renderGreenPowerConfigSection = (control: Control<PackageFormData>) => {
-    if (!isGreenPower) return null;
-
-    return (
-      <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
-        <Typography variant="h6" gutterBottom>绿色电力配置</Typography>
-        <Grid container spacing={{ xs: 1, sm: 2 }}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Controller
-              name="green_power_config.monthly_env_value"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  type="number"
-                  label="月度绿色电力环境价值 (元/MWh)"
-                  fullWidth
-                  size="small"
-                />
-              )}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Controller
-              name="green_power_config.deviation_compensation_ratio"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  type="number"
-                  label="偏差补偿比例 (%)"
-                  fullWidth
-                  size="small"
-                />
-              )}
-            />
-          </Grid>
-          <Grid size={{ xs: 12 }}>
-            <FormHelperText>
-              双方用电量与约定电量偏差时，将按此比例进行补偿
-            </FormHelperText>
-          </Grid>
-        </Grid>
-      </Paper>
-    );
-  };
-
-  // 渲染价格说明区
-  const renderPriceDescriptionSection = () => (
-    <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
-      <Typography variant="h6" gutterBottom>价格说明</Typography>
-      <Paper variant="outlined" sx={{ p: 2 }}>
-        <Typography variant="subtitle2" gutterBottom>
-          封顶价格条款
-        </Typography>
-
-        <Alert severity="info" sx={{ mt: 1 }}>
-          <Typography variant="body2">
-            {PRICE_CAP_DESCRIPTION}
-          </Typography>
-        </Alert>
-
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-          注：此条款为系统默认条款，不可编辑
-        </Typography>
-      </Paper>
-    </Paper>
-  );
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -406,8 +325,6 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
             {renderBasicInfoSection(control)}
             {renderPricingModelSection(control)}
             {renderPricingConfigSection(control)}
-            {renderGreenPowerConfigSection(control)}
-            {renderPriceDescriptionSection()}
           </form>
         )}
       </DialogContent>

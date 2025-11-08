@@ -43,12 +43,14 @@ class PricingModelService:
         for doc in cursor:
             # 构建列表项数据
             list_item_data = {
-                "_id": doc["_id"],
+                "_id": str(doc["_id"]),
                 "model_code": doc.get("model_code"),
                 "display_name": doc.get("display_name"),
                 "package_type": doc.get("package_type"),
                 "pricing_mode": doc.get("pricing_mode"),
                 "floating_type": doc.get("floating_type"),
+                "formula": doc.get("formula", ""),
+                "description": doc.get("description", ""),
                 "enabled": doc.get("enabled", True),
                 "sort_order": doc.get("sort_order", 0)
             }
@@ -173,15 +175,19 @@ class PricingModelService:
 
         return errors
 
-    def _validate_linked_ratio(self, ratio: float, is_time_based: bool) -> List[str]:
+    def _validate_linked_ratio(self, ratio: Any, is_time_based: bool) -> List[str]:
         """验证联动电量比例"""
         errors = []
+        try:
+            ratio_float = float(ratio)
+        except (ValueError, TypeError):
+            return ["联动电量比例必须是一个有效的数字"]
 
         if is_time_based:
-            if ratio < 10 or ratio > 20:
+            if ratio_float < 10 or ratio_float > 20:
                 errors.append("分时套餐联动电量比例应在10%-20%之间")
         else:
-            if ratio > 20:
+            if ratio_float > 20:
                 errors.append("不分时套餐联动电量比例不得超过20%")
 
         return errors
@@ -234,9 +240,9 @@ class PricingModelService:
         errors = []
 
         # 检查分成比例
-        split_ratio = config.get("split_ratio")
-        if split_ratio is not None:
-            if split_ratio < 0 or split_ratio > 100:
+        sharing_ratio = config.get("sharing_ratio")
+        if sharing_ratio is not None:
+            if sharing_ratio < 0 or sharing_ratio > 100:
                 errors.append("分成比例应在0%-100%之间")
 
         # 价差公式型需要检查3个参考价

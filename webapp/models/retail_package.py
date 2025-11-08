@@ -34,12 +34,6 @@ class BaseMongoModel(BaseModel):
 
 
 # Models based on design document (v4 重构后)
-class GreenPowerConfig(BaseModel):
-    """绿色电力配置"""
-    monthly_env_value: float = Field(0, description="月度绿色电力环境价值（元/MWh）")
-    deviation_compensation_ratio: float = Field(0, description="偏差补偿比例（%）")
-
-
 class ValidationResult(BaseModel):
     """价格比例校验结果"""
     price_ratio_compliant: bool = Field(default=True, description="是否符合463号文比例")
@@ -58,9 +52,8 @@ class RetailPackage(BaseMongoModel):
     # 价格配置（根据模型动态使用，扁平化字典结构）
     pricing_config: dict = Field(default_factory=dict, description="统一的定价配置字典")
 
-    # 绿电配置
+    # 绿电标识
     is_green_power: bool = False
-    green_power_config: Optional[GreenPowerConfig] = None
 
     # 状态和元数据
     status: Literal["draft", "active", "archived"] = "draft"
