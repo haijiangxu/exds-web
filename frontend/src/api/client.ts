@@ -3,7 +3,8 @@ import axios from 'axios';
 
 // 创建一个axios实例，用于与我们的FastAPI后端通信
 const apiClient = axios.create({
-    // 从环境变量读取API的基础URL，如果不存在，则默认为本地开发服务器地址
+    // 从环境变量读取API的基础URL，如果不存在，则使用相对路径
+    // 这样可以利用webpack dev server的代理功能
     baseURL: process.env.REACT_APP_API_BASE_URL || '',
     headers: {
         'Content-Type': 'application/json',

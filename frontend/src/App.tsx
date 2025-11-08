@@ -18,6 +18,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import PlaceholderPage from './components/PlaceholderPage';
 import GridAgencyPricePage from './pages/GridAgencyPricePage';
 import RetailPackagePage from './pages/RetailPackagePage';
+import { CustomerManagementPage } from './pages/CustomerManagementPage';
 import { TabProvider } from './contexts/TabContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { DesktopTabLayout } from './layouts/DesktopTabLayout';
@@ -45,7 +46,7 @@ const ResponsiveLayout: React.FC = () => {
                     <Route path="dashboard" element={<PlaceholderPage />} />
 
                     {/* 客户管理 */}
-                    <Route path="customer/profiles" element={<PlaceholderPage />} />
+                    <Route path="customer/profiles" element={<CustomerManagementPage />} />
                     <Route path="customer/retail-contracts" element={<PlaceholderPage />} />
                     <Route path="customer/load-analysis" element={<LoadAnalysisPage />} />
                     <Route path="customer/cluster-analysis" element={<PlaceholderPage />} />

@@ -21,7 +21,22 @@
       "Bash(powershell:*)",
       "Bash(uvicorn:*)",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc2MjU5MjMyMn0.NxzNZwG1UGbYSNmFDF7QvlTtyaNP5K6BN9xpKs7BQ7I\")",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "mcp__chrome-devtools__new_page",
+      "mcp__chrome-devtools__take_snapshot",
+      "mcp__chrome-devtools__fill",
+      "mcp__chrome-devtools__click",
+      "mcp__chrome-devtools__wait_for",
+      "mcp__chrome-devtools__evaluate_script",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__select_page",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc2MjU5NzYzNn0.nxD4fmVHztr-xuYFQATYRI73pAAZSgXTANI4ztNguNw\")",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc2MjU5Nzc5Nn0.YOamhyqLSn3-_mAQkAoFL9C_o_8wbkVEZUNg-o6XCF0\")",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc2MjU5Nzc5Nn0.YOamhyqLSn3-_mAQkAoFL9C_o_8wbkVEZUNg-o6XCF0\" curl -X GET \"http://127.0.0.1:8005/api/v1/customers\" -H \"accept: application/json\" -H \"Authorization: Bearer $TOKEN\")",
+      "mcp__chrome-devtools__list_console_messages",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc2MjU5Nzc5Nn0.YOamhyqLSn3-_mAQkAoFL9C_o_8wbkVEZUNg-o6XCF0\" curl:*)",
+      "Bash(npm start:*)",
+      "Bash(netsh:*)"
     ],
     "deny": [],
     "ask": []

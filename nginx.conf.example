@@ -1,0 +1,69 @@
+# Nginx配置示例 - 用于生产环境
+# 将前端3000端口和后端8005端口都通过80/443端口提供服务
+
+server {
+    listen 80;
+    server_name your-domain.com;  # 替换为您的域名或公网IP
+
+    # 前端静态文件
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # API代理到后端
+    location /api {
+        proxy_pass http://127.0.0.1:8005;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+
+        # CORS处理
+        add_header 'Access-Control-Allow-Origin' '*';
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';
+
+        # 处理预检请求
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' '*';
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';
+            add_header 'Access-Control-Max-Age' 1728000;
+            add_header 'Content-Type' 'text/plain; charset=utf-8';
+            add_header 'Content-Length' 0;
+            return 204;
+        }
+    }
+}
+
+# HTTPS配置（可选）
+# server {
+#     listen 443 ssl;
+#     server_name your-domain.com;
+#
+#     ssl_certificate /path/to/your/cert.pem;
+#     ssl_certificate_key /path/to/your/key.pem;
+#
+#     # 前端和API配置与上面相同
+#     location / {
+#         proxy_pass http://127.0.0.1:3000;
+#         # ... 其他配置
+#     }
+#
+#     location /api {
+#         proxy_pass http://127.0.0.1:8005;
+#         # ... 其他配置
+#     }
+# }
