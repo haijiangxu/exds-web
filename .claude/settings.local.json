@@ -15,7 +15,10 @@
       "Bash(python:*)",
       "Bash(timeout /t 5)",
       "Bash(nul)",
-      "Bash(tmpfrontend_build.log)"
+      "Bash(tmpfrontend_build.log)",
+      "Bash(taskkill:*)",
+      "Bash(powershell \"Stop-Process -Id 18212 -Force\")",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []

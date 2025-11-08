@@ -5,9 +5,10 @@ class PricingEngine:
     """Retail package pricing calculation engine."""
 
     STANDARD_RATIOS = {
-        "high_to_flat": 1.6,
-        "valley_to_flat": 0.4,
-        "deep_valley_to_flat": 0.3
+        "peak_to_flat": 1.8,      # 尖峰/平 = 1.8 (上浮80%)
+        "high_to_flat": 1.6,      # 峰/平 = 1.6
+        "valley_to_flat": 0.4,    # 谷/平 = 0.4
+        "deep_valley_to_flat": 0.3  # 深谷/平 = 0.3 (下浮70%)
     }
 
     # NOTE: 此方法已废弃，使用 pricing_model_service.validate_pricing_config 替代

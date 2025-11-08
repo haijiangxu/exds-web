@@ -15,9 +15,18 @@ export const PriceSpreadSimplePriceForm: React.FC<PriceSpreadSimplePriceFormProp
   const referenceTypeOptions = isTimeBased ? [
     { value: 'day_ahead_avg', label: '日前市场均价（分时）' },
     { value: 'real_time_avg', label: '实时市场均价（分时）' },
+    { value: 'market_monthly_avg', label: '电力市场月度交易均价(当月平均上网电价)（分时）' },
+    { value: 'grid_agency_price', label: '电网代理购电价格（分时）' },
+    { value: 'upper_limit_price', label: '上限价（分时）' },
+    { value: 'annual_term_time_price', label: '售电侧年度中长期分时交易价格' },
+    { value: 'monthly_settlement_weighted_price', label: '售电侧月度结算加权价（不分时）' },
+    { value: 'term_time_price', label: '售电侧中长期分时交易价格' },
   ] : [
     { value: 'day_ahead_avg', label: '日前市场均价' },
     { value: 'real_time_avg', label: '实时市场均价' },
+    { value: 'market_monthly_avg', label: '电力市场月度交易均价(当月平均上网电价)' },
+    { value: 'grid_agency_price', label: '电网代理购电价格' },
+    { value: 'upper_limit_price', label: '上限价' },
   ];
 
   return (

@@ -75,6 +75,27 @@ const formatNumber = (value: any, decimals: number = 5): string => {
   if (value === undefined || value === null || value === '') return '';
   const num = Number(value);
   if (isNaN(num)) return String(value);
+
+  // 如果 decimals 为 0，按实际小数位显示
+  if (decimals === 0) {
+    // 转换为字符串，去除不必要的尾随零
+    const str = num.toString();
+    // 如果是科学计数法，使用 toLocaleString 转换
+    if (str.includes('e')) {
+      return num.toLocaleString('zh-CN', { maximumFractionDigits: 10 });
+    }
+    // 处理普通数字
+    const parts = str.split('.');
+    if (parts.length === 1) {
+      // 整数
+      return parts[0];
+    } else {
+      // 小数，去除尾随零
+      const decimal = parts[1].replace(/0+$/, '');
+      return decimal ? `${parts[0]}.${decimal}` : parts[0];
+    }
+  }
+
   return num.toFixed(decimals);
 };
 
@@ -179,10 +200,10 @@ export const PricingDetails: React.FC<PricingDetailsProps> = ({ model, pricingCo
 
             if (model.floating_type === 'price') {
                 // 浮动价（不分时段）
-                return renderConfigItem('浮动价', formatNumber(pricingConfig.floating_price), '元/kWh');
+                return renderConfigItem('浮动价', formatNumber(pricingConfig.floating_price, 0), '元/kWh');
             } else if (model.floating_type === 'fee') {
                 // 浮动费用（不分时段）
-                return renderConfigItem('浮动费用', formatNumber(pricingConfig.floating_fee), '元/kWh');
+                return renderConfigItem('浮动费用', formatNumber(pricingConfig.floating_fee, 0), '元');
             }
             return null;
         };
@@ -210,7 +231,7 @@ export const PricingDetails: React.FC<PricingDetailsProps> = ({ model, pricingCo
 
     return (
         <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
-            <Typography variant="h6" gutterBottom>定价配置</Typography>
+            <Typography variant="h6" gutterBottom>定价模型</Typography>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
                 <Chip label={model.display_name} color="primary" />
@@ -231,7 +252,7 @@ export const PricingDetails: React.FC<PricingDetailsProps> = ({ model, pricingCo
 
             <Divider sx={{ my: 2 }} />
 
-            <Typography variant="subtitle1" gutterBottom>详细参数</Typography>
+            <Typography variant="h6" gutterBottom>模型参数</Typography>
             <Grid container spacing={2}>
                 {renderParams()}
             </Grid>
@@ -239,7 +260,7 @@ export const PricingDetails: React.FC<PricingDetailsProps> = ({ model, pricingCo
             {model.description && (
                 <>
                     <Divider sx={{ my: 2 }} />
-                    <Typography variant="subtitle1" gutterBottom>模型说明</Typography>
+                    <Typography variant="h6" gutterBottom>模型说明</Typography>
                     <Typography variant="body2" component="div" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: model.description }} />
                 </>
             )}

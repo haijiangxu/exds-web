@@ -44,13 +44,9 @@ npm test --prefix frontend
 
 ## 前端开发工作流
 
-**重要**：在开始前端开发任务时，应首先在后台启动开发服务器，并将日志输出到指定文件，以便自主诊断编译错误：
+**重要**：
 
-```bash
-npm start --prefix frontend > tmp\frontend_dev.log 2>&1 &
-```
-
-当遇到编译错误时，首要行动是读取 `frontend_dev.log` 文件内容以获取详细错误信息，然后进行修复。
+修改前端代码后，通过运行构建指令`npm run build --prefix frontend`，检查是否有编译错误，并自动修复。
 
 ## 代码架构
 

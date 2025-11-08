@@ -202,10 +202,10 @@ class PricingModelService:
             return warnings  # 平段价格不存在，不进行比例校验
 
         STANDARD_RATIOS = {
-            "peak_to_flat": 2.0,      # 尖峰/平 = 2.0
+            "peak_to_flat": 1.8,      # 尖峰/平 = 1.8 (上浮80%)
             "high_to_flat": 1.6,      # 峰/平 = 1.6
             "valley_to_flat": 0.4,    # 谷/平 = 0.4
-            "deep_valley_to_flat": 0.3  # 深谷/平 = 0.3
+            "deep_valley_to_flat": 0.3  # 深谷/平 = 0.3 (下浮70%)
         }
 
         actual_ratios = {
@@ -242,8 +242,12 @@ class PricingModelService:
         # 检查分成比例
         sharing_ratio = config.get("sharing_ratio")
         if sharing_ratio is not None:
-            if sharing_ratio < 0 or sharing_ratio > 100:
-                errors.append("分成比例应在0%-100%之间")
+            try:
+                sharing_ratio_float = float(sharing_ratio)
+                if sharing_ratio_float < 0 or sharing_ratio_float > 100:
+                    errors.append("分成比例应在0%-100%之间")
+            except (ValueError, TypeError):
+                errors.append("分成比例必须是有效的数字")
 
         # 价差公式型需要检查3个参考价
         if pricing_mode == "price_spread_formula":

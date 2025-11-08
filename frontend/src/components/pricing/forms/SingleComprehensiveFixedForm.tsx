@@ -44,10 +44,10 @@ export const SingleComprehensiveFixedForm: React.FC<SingleComprehensiveFixedForm
             此模型为单一综合电价（固定价）模型，仅适用于分时套餐。<br />
             您只需输入 <strong>平段</strong> 的基准价格，其他时段价格将按以下规则自动浮动计算：<br />
             <ul>
-              <li><strong>峰段</strong> = 平段价格 * 1.5</li>
-              <li><strong>谷段</strong> = 平段价格 * 0.5</li>
-              <li><strong>尖峰(高段)</strong> = 平段价格 * 1.8</li>
-              <li><strong>深谷</strong> = 平段价格 * 0.25</li>
+              <li><strong>高峰段</strong> = 平段价格 * 1.6</li>
+              <li><strong>低谷段</strong> = 平段价格 * 0.4</li>
+              <li><strong>尖峰段</strong> = 平段价格 * 1.8（上浮80%）</li>
+              <li><strong>深谷段</strong> = 平段价格 * 0.3（下浮70%）</li>
             </ul>
             这些浮动比例是固定的，无需手动输入。
           </Typography>

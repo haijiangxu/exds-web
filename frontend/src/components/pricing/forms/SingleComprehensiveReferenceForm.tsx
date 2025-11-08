@@ -13,9 +13,11 @@ interface SingleComprehensiveReferenceFormProps {
 export const SingleComprehensiveReferenceForm: React.FC<SingleComprehensiveReferenceFormProps> = ({ control }) => {
 
   const referenceOptions = [
-    { value: 'grid_agency_price', label: '电网代理购电价格（分时）' },
-    { value: 'market_monthly_avg', label: '电力市场月度交易均价（分时）' },
-    { value: 'annual_longterm_time', label: '售电侧年度中长期分时交易价格' },
+    { value: 'grid_agency_price', label: '电网代理购电价格' },
+    { value: 'market_monthly_avg', label: '电力市场月度交易均价(当月平均上网电价)' },
+    { value: 'annual_longterm_avg', label: '售电侧年度中长期交易均价' },
+    { value: 'monthly_settlement_weighted_price', label: '售电侧月度结算加权价' },
+    { value: 'term_time_price', label: '售电侧中长期交易均价' },
   ];
 
   return (
@@ -81,10 +83,10 @@ export const SingleComprehensiveReferenceForm: React.FC<SingleComprehensiveRefer
             此模型为单一综合电价（参考价）模型，仅适用于分时套餐。<br />
             您只需输入 <strong>平段</strong> 的浮动比例，系统将基于此计算平段结算价，其他时段价格将按以下规则自动浮动计算：<br />
             <ul>
-              <li><strong>峰段</strong> = 平段结算价 * 1.5</li>
-              <li><strong>谷段</strong> = 平段结算价 * 0.5</li>
-              <li><strong>尖峰(高段)</strong> = 平段结算价 * 1.8</li>
-              <li><strong>深谷</strong> = 平段结算价 * 0.25</li>
+              <li><strong>高峰段</strong> = 平段结算价 * 1.6</li>
+              <li><strong>低谷段</strong> = 平段结算价 * 0.4</li>
+              <li><strong>尖峰段</strong> = 平段结算价 * 1.8（上浮80%）</li>
+              <li><strong>深谷段</strong> = 平段结算价 * 0.3（下浮70%）</li>
             </ul>
             这些浮动比例是固定的，无需手动输入。
           </Typography>

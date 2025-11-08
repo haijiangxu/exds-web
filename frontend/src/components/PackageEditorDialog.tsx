@@ -269,7 +269,7 @@ export const PackageEditorDialog: React.FC<PackageEditorDialogProps> = ({
 
     return (
       <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
-        <Typography variant="h6" gutterBottom>定价配置</Typography>
+        <Typography variant="h6" gutterBottom>模型配置</Typography>
         <PricingConfigForm modelCode={modelCode} control={control} />
 
         {/* 显示模型说明 */}
