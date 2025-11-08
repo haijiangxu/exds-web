@@ -737,3 +737,24 @@ export const MyNewTab: React.FC = () => {
 ## 项目要求
 
 **一律用中文简体回复**：在此项目中，所有交互、代码注释、文档等都应使用中文简体。
+
+
+## 自动化后端服务器管理 (Automated Backend Server Management)
+
+为了提高调试效率，我将采用以下自动化流程来管理后端 `uvicorn` 服务器：
+
+1.  **启动服务器**:
+    - 我将使用 PowerShell 的 `Start-Process` 命令在后台启动 `uvicorn` 服务器。
+    - 命令示例: `Start-Process uvicorn -ArgumentList "webapp.main:app", "--reload", "--host", "0.0.0.0", "--port", "8005" -NoNewWindow -RedirectStandardOutput "d:\Gitworks\exds-web\tmp\uvicorn.out.log" -RedirectStandardError "d:\Gitworks\exds-web\tmp\uvicorn.err.log"`
+    - 所有后端日志（标准输出和错误）将被重定向到 `d:\Gitworks\exds-web\tmp\` 目录下的 `uvicorn.out.log` 和 `uvicorn.err.log` 文件。
+
+2.  **监控日志**:
+    - 当需要检查后端状态时，我将读取 `uvicorn.err.log` 文件来自动诊断启动或运行时的错误。
+
+3.  **重启服务器**:
+    - 当需要重启时，我将执行以下步骤：
+        a. 使用 `netstat -aon | findstr ":8005"` 命令查找正在监听 `8005` 端口的进程PID。
+        b. 使用 `taskkill /F /PID <PID>` 命令终止该进程。
+        c. 重新执行第1步中的启动命令。
+
+此流程将减少手动操作，并能更快地定位后端问题。
