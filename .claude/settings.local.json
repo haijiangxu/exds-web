@@ -37,7 +37,17 @@
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc2MjU5Nzc5Nn0.YOamhyqLSn3-_mAQkAoFL9C_o_8wbkVEZUNg-o6XCF0\" curl:*)",
       "Bash(npm start:*)",
       "Bash(netsh:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(openspec list:*)",
+      "Bash(openspec validate:*)",
+      "Bash(openspec show:*)",
+      "Bash(mongosh:*)",
+      "Bash(Start-Process:*)",
+      "Bash(timeout:*)",
+      "Bash(start:*)",
+      "Bash(tmpuvicorn.out.log:*)",
+      "Bash(tmpuvicorn.err.log)"
     ],
     "deny": [],
     "ask": []
