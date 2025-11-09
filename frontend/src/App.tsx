@@ -18,6 +18,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import PlaceholderPage from './components/PlaceholderPage';
 import GridAgencyPricePage from './pages/GridAgencyPricePage';
 import RetailPackagePage from './pages/RetailPackagePage';
+import RetailContractPage from './pages/RetailContractPage';
 import { CustomerManagementPage } from './pages/CustomerManagementPage';
 import { TabProvider } from './contexts/TabContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -51,7 +52,7 @@ const ResponsiveLayout: React.FC = () => {
                     <Route path="customer/profiles/view/:customerId" element={<CustomerManagementPage />} />
                     <Route path="customer/profiles/edit/:customerId" element={<CustomerManagementPage />} />
                     <Route path="customer/profiles/copy/:customerId" element={<CustomerManagementPage />} />
-                    <Route path="customer/retail-contracts" element={<PlaceholderPage />} />
+                    <Route path="customer/retail-contracts" element={<RetailContractPage />} />
                     <Route path="customer/load-analysis" element={<LoadAnalysisPage />} />
                     <Route path="customer/cluster-analysis" element={<PlaceholderPage />} />
 

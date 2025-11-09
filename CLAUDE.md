@@ -743,13 +743,13 @@ export const MyNewTab: React.FC = () => {
 
 为了提高调试效率，我将采用以下自动化流程来管理后端 `uvicorn` 服务器：
 
-1.  **启动服务器**:
-    - 我将使用 PowerShell 的 `Start-Process` 命令在后台启动 `uvicorn` 服务器。
-    - 命令示例: `Start-Process uvicorn -ArgumentList "webapp.main:app", "--reload", "--host", "0.0.0.0", "--port", "8005" -NoNewWindow -RedirectStandardOutput "d:\Gitworks\exds-web\tmp\uvicorn.out.log" -RedirectStandardError "d:\Gitworks\exds-web\tmp\uvicorn.err.log"`
-    - 所有后端日志（标准输出和错误）将被重定向到 `d:\Gitworks\exds-web\tmp\` 目录下的 `uvicorn.out.log` 和 `uvicorn.err.log` 文件。
+```powershell
+#1 启动后端（日志重定向）
+Start-Process uvicorn -ArgumentList "webapp.main:app", "--reload", "--host", "0.0.0.0", "--port", "8005"  -RedirectStandardOutput "tmp\uvicorn.out.log" -RedirectStandardError "tmp\uvicorn.err.log"
 
-2.  **监控日志**:
-    - 当需要检查后端状态时，我将读取 `uvicorn.err.log` 文件来自动诊断启动或运行时的错误。
+#2 检查启动日志
+cat tmp\uvicorn.err.log
+```
 
 3.  **重启服务器**:
     - 当需要重启时，我将执行以下步骤：

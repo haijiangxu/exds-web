@@ -10,7 +10,7 @@ import statistics
 from bson import json_util
 import json
 
-from webapp.api import v1_retail_packages, v1_customers
+from webapp.api import v1_retail_packages, v1_customers, v1_retail_contracts
 from webapp.services.package_service import PackageService
 from webapp.services.pricing_engine import PricingEngine
 from webapp.services.pricing_model_service import pricing_model_service
@@ -19,6 +19,7 @@ from webapp.services.pricing_model_service import pricing_model_service
 router = APIRouter(prefix="/api/v1", tags=["v1"])
 router.include_router(v1_retail_packages.router)
 router.include_router(v1_customers.router)  # 客户管理路由
+router.include_router(v1_retail_contracts.router)  # 零售合同管理路由
 
 # --- 集合定义 ---
 USER_COLLECTION = DATABASE['user_load_data']
