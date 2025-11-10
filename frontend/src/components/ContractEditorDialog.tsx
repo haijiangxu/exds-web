@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Paper, Typography, Grid, Autocomplete,
-  CircularProgress, Alert, useMediaQuery, useTheme, Box
+  CircularProgress, Alert, useMediaQuery, useTheme
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { zhCN } from 'date-fns/locale';
-import { parse, format } from 'date-fns';
+import { format } from 'date-fns';
 import {
   createContract,
   updateContract,
@@ -16,6 +16,8 @@ import {
   ContractFormData
 } from '../api/retail-contracts';
 import apiClient from '../api/client';
+import usePricingModels from '../hooks/usePricingModels';
+import { PricingDetails } from './pricing/details/PricingDetails';
 
 interface ContractEditorDialogProps {
   open: boolean;
@@ -33,6 +35,7 @@ interface PackageOption {
   is_green_power: boolean;
   model_code: string;
   status: string;
+  pricing_config?: Record<string, any>;
 }
 
 // 客户选项类型
@@ -76,6 +79,7 @@ export const ContractEditorDialog: React.FC<ContractEditorDialogProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const isReadOnly = mode === 'view';
+  const { getModelByCode } = usePricingModels();
 
   // 加载套餐和客户选项
   useEffect(() => {
@@ -106,14 +110,17 @@ export const ContractEditorDialog: React.FC<ContractEditorDialogProps> = ({
 
       // 如果是编辑或查看模式，填充表单
       if ((mode === 'edit' || mode === 'view') && contract) {
+        const startDate = contract.purchase_start_month ? new Date(contract.purchase_start_month) : null;
+        const endDate = contract.purchase_end_month ? new Date(contract.purchase_end_month) : null;
+
         reset({
           package_name: contract.package_name,
           package_id: contract.package_id,
           customer_name: contract.customer_name,
           customer_id: contract.customer_id,
           purchasing_electricity_quantity: contract.purchasing_electricity_quantity,
-          purchase_start_month: parse(contract.purchase_start_month, 'yyyy-MM', new Date()),
-          purchase_end_month: parse(contract.purchase_end_month, 'yyyy-MM', new Date())
+          purchase_start_month: startDate,
+          purchase_end_month: endDate
         });
 
         // 加载套餐详情
@@ -157,27 +164,47 @@ export const ContractEditorDialog: React.FC<ContractEditorDialogProps> = ({
     setSaving(true);
     setError(null);
 
+    const submitData = {
+      package_name: data.package_name,
+      package_id: data.package_id,
+      customer_name: data.customer_name,
+      customer_id: data.customer_id,
+      purchasing_electricity_quantity: data.purchasing_electricity_quantity,
+      purchase_start_month: data.purchase_start_month ? format(data.purchase_start_month, 'yyyy-MM-dd') : '',
+      purchase_end_month: data.purchase_end_month ? format(data.purchase_end_month, 'yyyy-MM-dd') : ''
+    };
+
     try {
-      const submitData = {
-        package_name: data.package_name,
-        package_id: data.package_id,
-        customer_name: data.customer_name,
-        customer_id: data.customer_id,
-        purchasing_electricity_quantity: data.purchasing_electricity_quantity,
-        purchase_start_month: data.purchase_start_month ? format(data.purchase_start_month, 'yyyy-MM') : '',
-        purchase_end_month: data.purchase_end_month ? format(data.purchase_end_month, 'yyyy-MM') : ''
-      };
 
       if (mode === 'create') {
         await createContract(submitData);
       } else if (mode === 'edit' && contract) {
-        await updateContract(contract._id, submitData);
+        await updateContract(contract.id, submitData);
       }
 
       onSuccess();
     } catch (error: any) {
       console.error('保存失败', error);
-      const errorMsg = error.response?.data?.detail || error.message || '保存失败，请重试';
+      console.error('错误详情:', error.response?.data);
+      console.error('发送的数据:', submitData);
+      let errorMsg = '保存失败，请重试';
+
+      // 处理不同类型的错误响应
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        if (typeof errorData.detail === 'string') {
+          errorMsg = errorData.detail;
+        } else if (typeof errorData.detail === 'object' && errorData.detail.msg) {
+          errorMsg = errorData.detail.msg;
+        } else if (errorData.message) {
+          errorMsg = errorData.message;
+        } else if (typeof errorData === 'string') {
+          errorMsg = errorData;
+        }
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+
       setError(errorMsg);
     } finally {
       setSaving(false);
@@ -190,49 +217,24 @@ export const ContractEditorDialog: React.FC<ContractEditorDialogProps> = ({
       <Typography variant="h6" gutterBottom>合同基本信息</Typography>
 
       <Grid container spacing={{ xs: 1, sm: 2 }}>
-        {/* 套餐名称 */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Controller
-            name="package_name"
-            control={control}
-            rules={{ required: '请选择套餐' }}
-            render={({ field }) => (
-              <Autocomplete
-                {...field}
-                options={packageOptions}
-                getOptionLabel={(option: PackageOption | string) =>
-                  typeof option === 'string' ? option : option.package_name || ''
+        {/* 合同编号 - 仅在查看和编辑模式显示 */}
+        {(mode === 'view' || mode === 'edit') && contract && (
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              label="合同编号"
+              value={contract.id}
+              disabled
+              fullWidth
+              InputProps={{
+                sx: {
+                  backgroundColor: 'action.disabledBackground',
+                  fontFamily: 'monospace',
+                  fontSize: '0.875rem'
                 }
-                value={packageOptions.find(p => p.package_name === field.value) || null}
-                onChange={(event, value) => {
-                  field.onChange(value?.package_name || '');
-                  setValue('package_id', value?._id || '');
-                  if (value) handlePackageSelect(value._id);
-                }}
-                loading={loadingPackages}
-                disabled={isReadOnly}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="套餐名称"
-                    required
-                    error={!!errors.package_name}
-                    helperText={errors.package_name?.message}
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {loadingPackages ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
-                    }}
-                  />
-                )}
-              />
-            )}
-          />
-        </Grid>
+              }}
+            />
+          </Grid>
+        )}
 
         {/* 客户名称 */}
         <Grid size={{ xs: 12, md: 6 }}>
@@ -266,6 +268,50 @@ export const ContractEditorDialog: React.FC<ContractEditorDialogProps> = ({
                       endAdornment: (
                         <>
                           {loadingCustomers ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+              />
+            )}
+          />
+        </Grid>
+
+        {/* 套餐名称 */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Controller
+            name="package_name"
+            control={control}
+            rules={{ required: '请选择套餐' }}
+            render={({ field }) => (
+              <Autocomplete
+                {...field}
+                options={packageOptions}
+                getOptionLabel={(option: PackageOption | string) =>
+                  typeof option === 'string' ? option : option.package_name || ''
+                }
+                value={packageOptions.find(p => p.package_name === field.value) || null}
+                onChange={(event, value) => {
+                  field.onChange(value?.package_name || '');
+                  setValue('package_id', value?._id || '');
+                  if (value) handlePackageSelect(value._id);
+                }}
+                loading={loadingPackages}
+                disabled={isReadOnly}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="套餐名称"
+                    required
+                    error={!!errors.package_name}
+                    helperText={errors.package_name?.message}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {loadingPackages ? <CircularProgress color="inherit" size={20} /> : null}
                           {params.InputProps.endAdornment}
                         </>
                       ),
@@ -369,46 +415,35 @@ export const ContractEditorDialog: React.FC<ContractEditorDialogProps> = ({
     </Paper>
   );
 
-  // 辅助渲染函数 - 套餐内容（只读）
-  const renderPackageContentSection = () => (
-    <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mt: 2 }}>
-      <Typography variant="h6" gutterBottom>关联套餐内容</Typography>
+  // 辅助渲染函数 - 定价模型详情（只读）
+  const renderPricingDetailsSection = () => {
+    if (!selectedPackage?.model_code) {
+      return null;
+    }
 
-      {selectedPackage ? (
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Typography variant="body2" color="text.secondary">套餐类型</Typography>
-            <Typography variant="body1">
-              {selectedPackage.package_type === 'time_based' ? '分时段' : '不分时段'}
-            </Typography>
-          </Grid>
+    const model = getModelByCode(selectedPackage.model_code);
+    if (!model) {
+      return (
+        <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mt: 2 }}>
+          <Typography variant="h6" gutterBottom>定价模型详情</Typography>
+          <Alert severity="warning">
+            定价模型详情加载失败或模型不存在
+          </Alert>
+        </Paper>
+      );
+    }
 
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Typography variant="body2" color="text.secondary">是否绿电</Typography>
-            <Typography variant="body1">
-              {selectedPackage.is_green_power ? '是' : '否'}
-            </Typography>
-          </Grid>
+    const isGreenPower = selectedPackage.is_green_power;
 
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Typography variant="body2" color="text.secondary">定价模型</Typography>
-            <Typography variant="body1">
-              {selectedPackage.model_code || '-'}
-            </Typography>
-          </Grid>
-
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Typography variant="body2" color="text.secondary">状态</Typography>
-            <Typography variant="body1">
-              {selectedPackage.status === 'active' ? '生效' : selectedPackage.status}
-            </Typography>
-          </Grid>
-        </Grid>
-      ) : (
-        <Typography color="text.secondary">请先选择套餐</Typography>
-      )}
-    </Paper>
-  );
+    return (
+      <PricingDetails
+        model={model}
+        pricingConfig={selectedPackage.pricing_config || {}}
+        packageType={selectedPackage.package_type}
+        isGreenPower={isGreenPower}
+      />
+    );
+  };
 
   // 阻止背景点击关闭对话框
   const handleClose = (event: {}, reason: "backdropClick" | "escapeKeyDown") => {
@@ -439,7 +474,7 @@ export const ContractEditorDialog: React.FC<ContractEditorDialogProps> = ({
 
         <form id="contract-form" onSubmit={handleSubmit(onSubmit)}>
           {renderBasicInfoSection()}
-          {renderPackageContentSection()}
+          {renderPricingDetailsSection()}
         </form>
       </DialogContent>
 

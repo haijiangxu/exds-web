@@ -6,6 +6,7 @@ interface PricingDetailsProps {
   model: PricingModel | undefined;
   pricingConfig: Record<string, any>;
   packageType: 'time_based' | 'non_time_based';
+  isGreenPower?: boolean;
 }
 
 // 参考价类型映射
@@ -71,7 +72,7 @@ const getLinkedTargetLabel = (value: string, isTimeBased: boolean): string => {
 };
 
 // 格式化数字
-const formatNumber = (value: any, decimals: number = 5): string => {
+const formatNumber = (value: any, decimals: number = 0): string => {
   if (value === undefined || value === null || value === '') return '';
   const num = Number(value);
   if (isNaN(num)) return String(value);
@@ -110,7 +111,7 @@ const renderConfigItem = (label: string, value: any, unit: string = '') => {
     );
 };
 
-export const PricingDetails: React.FC<PricingDetailsProps> = ({ model, pricingConfig, packageType }) => {
+export const PricingDetails: React.FC<PricingDetailsProps> = ({ model, pricingConfig, packageType, isGreenPower = false }) => {
     if (!model) {
         return (
             <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
@@ -236,6 +237,9 @@ export const PricingDetails: React.FC<PricingDetailsProps> = ({ model, pricingCo
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
                 <Chip label={model.display_name} color="primary" />
                 <Chip label={isTimeBased ? '分时' : '不分时'} size="small" />
+                {isGreenPower && (
+                    <Chip label="绿电" size="small" color="success" />
+                )}
             </Box>
 
             <Alert severity="info" sx={{ mb: 2 }}>

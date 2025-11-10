@@ -5,7 +5,8 @@ import apiClient from './client';
 
 // 基础数据类型定义
 export interface Contract {
-  _id: string;
+  id: string;
+  _id?: string; // 保持向后兼容
   package_name: string;
   package_id: string;
   customer_name: string;
@@ -66,6 +67,8 @@ export interface ContractListParams {
   package_name?: string;
   customer_name?: string;
   status?: 'pending' | 'active' | 'expired' | 'all';
+  purchase_start_month?: string;
+  purchase_end_month?: string;
   page?: number;
   page_size?: number;
 }

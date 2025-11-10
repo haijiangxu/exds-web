@@ -53,6 +53,9 @@ const ResponsiveLayout: React.FC = () => {
                     <Route path="customer/profiles/edit/:customerId" element={<CustomerManagementPage />} />
                     <Route path="customer/profiles/copy/:customerId" element={<CustomerManagementPage />} />
                     <Route path="customer/retail-contracts" element={<RetailContractPage />} />
+                    <Route path="customer/retail-contracts/create" element={<RetailContractPage />} />
+                    <Route path="customer/retail-contracts/view/:contractId" element={<RetailContractPage />} />
+                    <Route path="customer/retail-contracts/edit/:contractId" element={<RetailContractPage />} />
                     <Route path="customer/load-analysis" element={<LoadAnalysisPage />} />
                     <Route path="customer/cluster-analysis" element={<PlaceholderPage />} />
 

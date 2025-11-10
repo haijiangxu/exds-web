@@ -40,6 +40,8 @@ async def list_contracts(
     package_name: Optional[str] = Query(None, description="套餐名称（模糊搜索）"),
     customer_name: Optional[str] = Query(None, description="客户名称（模糊搜索）"),
     status: Optional[str] = Query(None, description="合同状态（pending/active/expired）"),
+    purchase_start_month: Optional[str] = Query(None, description="购电开始月份筛选（yyyy-MM）"),
+    purchase_end_month: Optional[str] = Query(None, description="购电结束月份筛选（yyyy-MM）"),
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页大小"),
     current_user: User = Depends(get_current_active_user)
@@ -61,7 +63,9 @@ async def list_contracts(
         filters={
             "package_name": package_name,
             "customer_name": customer_name,
-            "status": status
+            "status": status,
+            "purchase_start_month": purchase_start_month,
+            "purchase_end_month": purchase_end_month
         },
         page=page,
         page_size=page_size
