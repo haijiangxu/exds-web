@@ -59,6 +59,7 @@ export const ContractEditorDialog: React.FC<ContractEditorDialogProps> = ({
   // 表单管理
   const { control, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<ContractFormData>({
     defaultValues: {
+      contract_name: '',
       package_name: '',
       package_id: '',
       customer_name: '',
@@ -114,6 +115,7 @@ export const ContractEditorDialog: React.FC<ContractEditorDialogProps> = ({
         const endDate = contract.purchase_end_month ? new Date(contract.purchase_end_month) : null;
 
         reset({
+          contract_name: contract.contract_name || '',
           package_name: contract.package_name,
           package_id: contract.package_id,
           customer_name: contract.customer_name,
@@ -129,6 +131,7 @@ export const ContractEditorDialog: React.FC<ContractEditorDialogProps> = ({
         }
       } else {
         reset({
+          contract_name: '',
           package_name: '',
           package_id: '',
           customer_name: '',
@@ -165,6 +168,7 @@ export const ContractEditorDialog: React.FC<ContractEditorDialogProps> = ({
     setError(null);
 
     const submitData = {
+      contract_name: data.contract_name,
       package_name: data.package_name,
       package_id: data.package_id,
       customer_name: data.customer_name,
@@ -217,24 +221,24 @@ export const ContractEditorDialog: React.FC<ContractEditorDialogProps> = ({
       <Typography variant="h6" gutterBottom>合同基本信息</Typography>
 
       <Grid container spacing={{ xs: 1, sm: 2 }}>
-        {/* 合同编号 - 仅在查看和编辑模式显示 */}
-        {(mode === 'view' || mode === 'edit') && contract && (
-          <Grid size={{ xs: 12 }}>
-            <TextField
-              label="合同编号"
-              value={contract.id}
-              disabled
-              fullWidth
-              InputProps={{
-                sx: {
-                  backgroundColor: 'action.disabledBackground',
-                  fontFamily: 'monospace',
-                  fontSize: '0.875rem'
-                }
-              }}
-            />
-          </Grid>
-        )}
+        {/* 合同名称 */}
+        <Grid size={{ xs: 12 }}>
+          <Controller
+            name="contract_name"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="合同名称"
+                disabled={isReadOnly}
+                fullWidth
+                size="small"
+                helperText={isReadOnly ? "" : "客户简称 + 购电开始年月，如：供服中心202509"}
+                error={!!errors.contract_name}
+              />
+            )}
+          />
+        </Grid>
 
         {/* 客户名称 */}
         <Grid size={{ xs: 12, md: 6 }}>

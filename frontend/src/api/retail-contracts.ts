@@ -7,6 +7,7 @@ import apiClient from './client';
 export interface Contract {
   id: string;
   _id?: string; // 保持向后兼容
+  contract_name: string;
   package_name: string;
   package_id: string;
   customer_name: string;
@@ -31,6 +32,7 @@ export interface ContractListResponse {
 
 // 表单数据类型（用于创建/编辑）
 export interface ContractFormData {
+  contract_name: string;
   package_name: string;
   package_id: string;
   customer_name: string;
@@ -42,6 +44,7 @@ export interface ContractFormData {
 
 // 创建合同请求类型
 export interface ContractCreate {
+  contract_name?: string;
   package_name: string;
   package_id: string;
   customer_name: string;
@@ -53,6 +56,7 @@ export interface ContractCreate {
 
 // 更新合同请求类型
 export interface ContractUpdate {
+  contract_name?: string;
   package_name?: string;
   package_id?: string;
   customer_name?: string;
@@ -64,6 +68,7 @@ export interface ContractUpdate {
 
 // 查询参数类型
 export interface ContractListParams {
+  contract_name?: string;
   package_name?: string;
   customer_name?: string;
   status?: 'pending' | 'active' | 'expired' | 'all';

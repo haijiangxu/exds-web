@@ -152,17 +152,16 @@ export const ContractDetailsDialog: React.FC<ContractDetailsDialogProps> = ({
             <Typography variant="h6" gutterBottom>合同基本信息</Typography>
             <Grid container spacing={{ xs: 1, sm: 2 }}>
                 <Grid size={{ xs: 12 }}>
-                    <Typography variant="body2" color="text.secondary">合同编号</Typography>
+                    <Typography variant="body2" color="text.secondary">合同名称</Typography>
                     <Typography
                         variant="body1"
                         sx={{
                             mt: 0.5,
                             fontWeight: 'medium',
-                            fontFamily: 'monospace',
                             wordBreak: 'break-all'
                         }}
                     >
-                        {data?.id || '-'}
+                        {data?.contract_name || '-'}
                     </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>

@@ -37,6 +37,7 @@ async def create_contract(
 
 @router.get("", response_model=ContractListResponse)
 async def list_contracts(
+    contract_name: Optional[str] = Query(None, description="合同名称（模糊搜索）"),
     package_name: Optional[str] = Query(None, description="套餐名称（模糊搜索）"),
     customer_name: Optional[str] = Query(None, description="客户名称（模糊搜索）"),
     status: Optional[str] = Query(None, description="合同状态（pending/active/expired）"),
@@ -50,6 +51,7 @@ async def list_contracts(
     获取合同列表
 
     支持筛选：
+    - contract_name: 合同名称（模糊搜索）
     - package_name: 套餐名称（模糊搜索）
     - customer_name: 客户名称（模糊搜索）
     - status: 合同状态（pending/active/expired）
@@ -61,6 +63,7 @@ async def list_contracts(
     service = ContractService(DATABASE)
     result = service.list_contracts(
         filters={
+            "contract_name": contract_name,
             "package_name": package_name,
             "customer_name": customer_name,
             "status": status,

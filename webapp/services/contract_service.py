@@ -1,10 +1,11 @@
 from bson import ObjectId
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from webapp.tools.mongo import DATABASE
 from webapp.models.contract import (
     Contract, ContractCreate, ContractListItem, calculate_contract_status
 )
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 
 class ContractService:
@@ -26,6 +27,7 @@ class ContractService:
                 # 1. 基础查询索引
                 ([('package_name', 1)], {'name': 'idx_package_name'}),
                 ([('customer_name', 1)], {'name': 'idx_customer_name'}),
+                ([('contract_name', 1)], {'name': 'idx_contract_name'}),
                 ([('purchase_start_month', 1)], {'name': 'idx_purchase_start_month'}),
                 ([('purchase_end_month', 1)], {'name': 'idx_purchase_end_month'}),
 
@@ -38,8 +40,14 @@ class ContractService:
                  {'name': 'idx_package_start'}),
                 ([('customer_name', 1), ('purchase_start_month', -1)],
                  {'name': 'idx_customer_start'}),
+                ([('contract_name', 1), ('purchase_start_month', -1)],
+                 {'name': 'idx_contract_start'}),
 
-                # 4. 时间索引
+                # 4. 日期范围重叠检查索引
+                ([('customer_id', 1), ('purchase_start_month', 1), ('purchase_end_month', 1)],
+                 {'name': 'idx_customer_date_range'}),
+
+                # 5. 时间索引
                 ([('created_at', -1)], {'name': 'idx_created_at'}),
                 ([('updated_at', -1)], {'name': 'idx_updated_at'}),
             ]
@@ -92,18 +100,29 @@ class ContractService:
         if not customer:
             raise ValueError(f"客户不存在或状态不是正常")
 
-        # 3. 验证购电结束月份 >= 购电开始月份（Pydantic 模型已验证）
-        # 4. 创建合同对象
+        # 3. 检查日期范围重叠
+        start_month = contract_data.get("purchase_start_month")
+        end_month = contract_data.get("purchase_end_month")
+
+        if self._check_date_range_overlap(customer_id, start_month, end_month):
+            raise ValueError("该客户在指定日期范围内已存在合同，请检查日期设置")
+
+        # 4. 自动生成合同名称（如果没有提供）
+        if "contract_name" not in contract_data or not contract_data["contract_name"]:
+            contract_name = self._generate_contract_name(customer_id, start_month)
+            contract_data["contract_name"] = contract_name
+
+        # 5. 创建合同对象
         contract = Contract(**contract_data)
         contract.created_by = operator
         contract.updated_by = operator
         contract.created_at = datetime.utcnow()
         contract.updated_at = datetime.utcnow()
 
-        # 5. 插入数据库
+        # 6. 插入数据库
         result = self.collection.insert_one(contract.model_dump(by_alias=True, exclude_unset=True))
 
-        # 6. 返回创建的合同信息（包含虚拟状态字段）
+        # 7. 返回创建的合同信息（包含虚拟状态字段）
         created_contract = self.collection.find_one({"_id": result.inserted_id})
         return self._convert_to_dict_with_status(created_contract)
 
@@ -146,6 +165,9 @@ class ContractService:
         query = {}
 
         # 添加筛选条件
+        if filters.get("contract_name"):
+            query["contract_name"] = {"$regex": filters["contract_name"], "$options": "i"}
+
         if filters.get("package_name"):
             query["package_name"] = {"$regex": filters["package_name"], "$options": "i"}
 
@@ -188,6 +210,7 @@ class ContractService:
 
             item = ContractListItem(
                 id=str(doc["_id"]),
+                contract_name=doc.get("contract_name", ""),
                 package_name=doc.get("package_name", ""),
                 customer_name=doc.get("customer_name", ""),
                 purchasing_electricity_quantity=doc.get("purchasing_electricity_quantity", 0),
@@ -247,6 +270,7 @@ class ContractService:
             raise ValueError(f"只能编辑待生效状态的合同，当前状态为：{current_status}")
 
         # 4. 验证套餐和客户存在性（如果有更新）
+        customer = None
         if "package_id" in contract_data:
             package_id = contract_data.get("package_id")
             if not ObjectId.is_valid(package_id):
@@ -271,12 +295,34 @@ class ContractService:
             if not customer:
                 raise ValueError("客户不存在或状态不是正常")
 
-        # 5. 更新审计字段
+        # 5. 检查日期范围重叠（如果更新了日期或客户）
+        customer_id_for_check = contract_data.get("customer_id", existing_contract.get("customer_id"))
+        start_month_for_check = contract_data.get("purchase_start_month", existing_contract.get("purchase_start_month"))
+        end_month_for_check = contract_data.get("purchase_end_month", existing_contract.get("purchase_end_month"))
+
+        if (contract_data.get("customer_id") or
+            contract_data.get("purchase_start_month") or
+            contract_data.get("purchase_end_month")):
+
+            if self._check_date_range_overlap(customer_id_for_check, start_month_for_check, end_month_for_check, exclude_contract_id=contract_id):
+                raise ValueError("该客户在指定日期范围内已存在其他合同，请检查日期设置")
+
+        # 6. 自动生成合同名称（如果更新了客户或日期）
+        if (contract_data.get("customer_id") or contract_data.get("purchase_start_month")) and (
+            "contract_name" not in contract_data or not contract_data["contract_name"]):
+
+            # 确定要使用的客户ID
+            customer_id_for_name = contract_data.get("customer_id") or existing_contract.get("customer_id")
+
+            contract_name = self._generate_contract_name(customer_id_for_name, start_month_for_check)
+            contract_data["contract_name"] = contract_name
+
+        # 7. 更新审计字段
         update_data = contract_data.copy()
         update_data["updated_at"] = datetime.utcnow()
         update_data["updated_by"] = operator
 
-        # 6. 执行更新
+        # 8. 执行更新
         result = self.collection.update_one(
             {"_id": ObjectId(contract_id)},
             {"$set": update_data}
@@ -285,7 +331,7 @@ class ContractService:
         if result.matched_count == 0:
             raise ValueError("合同不存在")
 
-        # 7. 返回更新后的合同
+        # 9. 返回更新后的合同
         updated_contract = self.collection.find_one({"_id": ObjectId(contract_id)})
         return self._convert_to_dict_with_status(updated_contract)
 
@@ -355,3 +401,79 @@ class ContractService:
             )
 
         return result
+
+    def _generate_contract_name(self, customer_id: str, purchase_start_month: datetime) -> str:
+        """
+        生成合同名称（客户简称 + 购电开始年月）
+
+        Args:
+            customer_id: 客户ID
+            purchase_start_month: 购电开始月份
+
+        Returns:
+            合同名称，如"供服中心202509"
+        """
+        # 从客户档案获取客户简称
+        customer = self.db.customers.find_one({
+            "_id": ObjectId(customer_id),
+            "status": "active"
+        })
+
+        if customer and customer.get("short_name"):
+            short_name = customer["short_name"]
+        else:
+            # 如果无法获取客户简称，使用默认值
+            short_name = "客户"
+
+        # 生成年月字符串（YYYYMM格式）
+        year_month_str = purchase_start_month.strftime("%Y%m")
+
+        return f"{short_name}{year_month_str}"
+
+    def _check_date_range_overlap(self, customer_id: str, start_month: datetime, end_month: datetime, exclude_contract_id: Optional[str] = None) -> bool:
+        """
+        检查同一客户的日期范围是否重叠
+
+        Args:
+            customer_id: 客户ID
+            start_month: 新合同的开始月份
+            end_month: 新合同的结束月份
+            exclude_contract_id: 要排除的合同ID（用于更新时检查）
+
+        Returns:
+            True 如果有重叠，False 如果无重叠
+        """
+        query = {
+            "customer_id": customer_id,
+            "$or": [
+                # 新合同开始时间在现有合同期间内
+                {
+                    "purchase_start_month": {"$lte": start_month},
+                    "purchase_end_month": {"$gte": start_month}
+                },
+                # 新合同结束时间在现有合同期间内
+                {
+                    "purchase_start_month": {"$lte": end_month},
+                    "purchase_end_month": {"$gte": end_month}
+                },
+                # 新合同完全包含现有合同
+                {
+                    "purchase_start_month": {"$gte": start_month},
+                    "purchase_end_month": {"$lte": end_month}
+                },
+                # 现有合同完全包含新合同
+                {
+                    "purchase_start_month": {"$lte": start_month},
+                    "purchase_end_month": {"$gte": end_month}
+                }
+            ]
+        }
+
+        # 如果是更新操作，排除当前合同
+        if exclude_contract_id and ObjectId.is_valid(exclude_contract_id):
+            query["_id"] = {"$ne": ObjectId(exclude_contract_id)}
+
+        # 查找重叠的合同
+        overlapping_contracts = list(self.collection.find(query))
+
+        return len(overlapping_contracts) > 0

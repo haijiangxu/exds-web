@@ -47,6 +47,7 @@ class PackageSnapshot(BaseModel):
 # 合同创建模型
 class ContractCreate(BaseModel):
     """合同创建输入模型"""
+    contract_name: str = Field(..., min_length=1, description="合同名称")
     package_name: str = Field(..., min_length=1, description="套餐名称")
     package_id: str = Field(..., min_length=1, description="套餐ID")
     customer_name: str = Field(..., min_length=1, description="客户名称")
@@ -81,6 +82,7 @@ class Contract(BaseMongoModel, ContractCreate):
 class ContractListItem(BaseModel):
     """合同列表项模型（用于列表展示）"""
     id: str = Field(..., description="合同ID")
+    contract_name: str = Field(..., description="合同名称")
     package_name: str = Field(..., description="套餐名称")
     customer_name: str = Field(..., description="客户名称")
     purchasing_electricity_quantity: float = Field(..., description="购买电量(kWh)")

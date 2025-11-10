@@ -15,7 +15,10 @@ import { format, parseISO } from 'date-fns';
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
-  ArrowBack as ArrowBackIcon
+  ArrowBack as ArrowBackIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  FilterList as FilterListIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate, useLocation, matchPath } from 'react-router-dom';
 import {
@@ -77,14 +80,28 @@ const RetailContractPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
 
+  // 查询区域折叠状态
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+
   // 筛选条件
   const [filters, setFilters] = useState<ContractListParams>({
+    contract_name: '',
     package_name: '',
     customer_name: '',
     status: undefined,
     purchase_start_month: undefined,
     purchase_end_month: undefined,
   });
+
+  // 检查是否有活跃的筛选条件
+  const hasActiveFilters = Boolean(
+    filters.contract_name ||
+    filters.package_name ||
+    filters.customer_name ||
+    filters.status ||
+    filters.purchase_start_month ||
+    filters.purchase_end_month
+  );
 
   // 对话框状态 (仅桌面端使用)
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -298,57 +315,51 @@ const RetailContractPage: React.FC = () => {
     <Box>
       {contracts.map((contract) => (
         <Paper key={contract.id} variant="outlined" sx={{ p: 2, mb: 2 }}>
-          {/* 客户名称（可点击） */}
+          {/* 合同名称（作为卡片标题，可点击） */}
           <Typography
-            variant="subtitle1"
+            variant="h6"
             gutterBottom
             sx={{
               cursor: 'pointer',
               color: 'primary.main',
               '&:hover': { textDecoration: 'underline' },
-              fontWeight: 'bold'
+              fontWeight: 'bold',
+              fontSize: '1.1rem',
+              mb: 2
             }}
             onClick={() => handleView(contract)}
           >
-            {contract.customer_name}
+            {contract.contract_name || '未命名合同'}
           </Typography>
 
-          {/* 基本信息 */}
-          <Box sx={{ mb: 1 }}>
-            <Typography variant="body2" color="text.secondary">客户名称:</Typography>
-            <Typography variant="body2" sx={{ mb: 1 }}>{contract.customer_name}</Typography>
-
-            <Typography variant="body2" color="text.secondary">套餐名称:</Typography>
-            <Typography variant="body2" sx={{ mb: 1 }}>{contract.package_name}</Typography>
-
-            <Typography variant="body2" color="text.secondary">购买电量:</Typography>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              {contract.purchasing_electricity_quantity.toLocaleString()} kWh
-            </Typography>
-          </Box>
-
-          {/* 详细信息（两列布局） */}
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-            <Box sx={{ flex: '1 1 45%' }}>
-              <Typography variant="body2" color="text.secondary">购电月份:</Typography>
-              <Typography variant="body2">
-                {formatMonthDisplay(contract.purchase_start_month)} 至 {formatMonthDisplay(contract.purchase_end_month)}
+          {/* 客户信息和套餐信息（两列布局） */}
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" color="text.secondary">客户名称:</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 'medium', mb: 1 }}>
+                {contract.customer_name}
               </Typography>
             </Box>
-            <Box sx={{ flex: '1 1 45%' }}>
-              <Typography variant="body2" color="text.secondary">合同编号:</Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  fontSize: '0.75rem',
-                  wordBreak: 'break-all',
-                  cursor: 'pointer',
-                  color: 'primary.main',
-                  '&:hover': { textDecoration: 'underline' }
-                }}
-                onClick={() => handleView(contract)}
-              >
-                {contract.id.substring(0, 12)}...
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" color="text.secondary">套餐名称:</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 'medium', mb: 1 }}>
+                {contract.package_name}
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* 电量和时间信息 */}
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" color="text.secondary">购买电量:</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                {contract.purchasing_electricity_quantity.toLocaleString()} kWh
+              </Typography>
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" color="text.secondary">购电月份:</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                {formatMonthDisplay(contract.purchase_start_month)} 至 {formatMonthDisplay(contract.purchase_end_month)}
               </Typography>
             </Box>
           </Box>
@@ -598,79 +609,188 @@ const RetailContractPage: React.FC = () => {
       <Box sx={{ width: '100%' }}>
 
         {/* 查询区域 */}
-        <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-          <TextField
-            label="套餐名称"
-            variant="outlined"
-            size="small"
-            value={filters.package_name}
-            onChange={(e) => setFilters({ ...filters, package_name: e.target.value })}
-            sx={{ width: { xs: '100%', sm: '200px' } }}
-            placeholder="输入套餐名称"
-          />
-          <TextField
-            label="客户名称"
-            variant="outlined"
-            size="small"
-            value={filters.customer_name}
-            onChange={(e) => setFilters({ ...filters, customer_name: e.target.value })}
-            sx={{ width: { xs: '100%', sm: '200px' } }}
-            placeholder="输入客户名称"
-          />
-          <DatePicker
-            views={['year', 'month']}
-            label="开始月份"
-            value={filters.purchase_start_month ? new Date(filters.purchase_start_month + '-01') : null}
-            onChange={(date) => {
-              const value = date ? format(date, 'yyyy-MM') : undefined;
-              setFilters({ ...filters, purchase_start_month: value });
-            }}
-            sx={{ width: { xs: '100%', sm: '180px' } }}
-            slotProps={{
-              textField: {
-                variant: "outlined",
-                size: "small",
-                placeholder: "选择开始月份"
-              }
-            }}
-            format="yyyy年MM月"
-          />
-          <DatePicker
-            views={['year', 'month']}
-            label="结束月份"
-            value={filters.purchase_end_month ? new Date(filters.purchase_end_month + '-01') : null}
-            onChange={(date) => {
-              const value = date ? format(date, 'yyyy-MM') : undefined;
-              setFilters({ ...filters, purchase_end_month: value });
-            }}
-            sx={{ width: { xs: '100%', sm: '180px' } }}
-            slotProps={{
-              textField: {
-                variant: "outlined",
-                size: "small",
-                placeholder: "选择结束月份"
-              }
-            }}
-            format="yyyy年MM月"
-          />
-          <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
-            <InputLabel>状态</InputLabel>
-            <Select
-              value={filters.status || ''}
-              label="状态"
-              onChange={(e) => setFilters({ ...filters, status: e.target.value as any || undefined })}
+        <Paper variant="outlined" sx={{ mb: 2 }}>
+          {/* 移动端折叠标题栏 */}
+          {isMobile ? (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                p: 1.5,
+                cursor: 'pointer',
+                '&:hover': { backgroundColor: 'action.hover' }
+              }}
+              onClick={() => setIsFilterExpanded(!isFilterExpanded)}
             >
-              <MenuItem value="">所有状态</MenuItem>
-              <MenuItem value="pending">待生效</MenuItem>
-              <MenuItem value="active">生效</MenuItem>
-              <MenuItem value="expired">已过期</MenuItem>
-            </Select>
-          </FormControl>
-          <Button variant="contained" onClick={handleSearch} disabled={loading}>查询</Button>
-          <Button variant="outlined" onClick={handleReset}>重置</Button>
-        </Box>
-      </Paper>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <FilterListIcon sx={{ color: 'primary.main' }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+                  筛选条件
+                </Typography>
+                {hasActiveFilters && (
+                  <Chip
+                    size="small"
+                    label="已筛选"
+                    color="primary"
+                    variant="outlined"
+                  />
+                )}
+              </Box>
+              {isFilterExpanded ? (
+                <ExpandLessIcon sx={{ color: 'text.secondary' }} />
+              ) : (
+                <ExpandMoreIcon sx={{ color: 'text.secondary' }} />
+              )}
+            </Box>
+          ) : null}
+
+          {/* 桌面端始终显示，移动端展开时显示 */}
+          {(!isMobile || isFilterExpanded) && (
+            <Box sx={{ p: { xs: isMobile ? 1 : 2, sm: 2 } }}>
+              <Box sx={{
+                display: 'flex',
+                gap: 2,
+                flexWrap: 'wrap',
+                alignItems: isMobile ? 'stretch' : 'center',
+                flexDirection: isMobile ? 'column' : 'row'
+              }}>
+                {/* 第一行筛选字段 */}
+                <Box sx={{
+                  display: 'flex',
+                  gap: 2,
+                  flexWrap: 'wrap',
+                  width: isMobile ? '100%' : 'auto'
+                }}>
+                  <TextField
+                    label="合同名称"
+                    variant="outlined"
+                    size="small"
+                    value={filters.contract_name}
+                    onChange={(e) => setFilters({ ...filters, contract_name: e.target.value })}
+                    sx={{ width: { xs: '100%', sm: '200px' } }}
+                    placeholder="输入合同名称"
+                  />
+                  <TextField
+                    label="套餐名称"
+                    variant="outlined"
+                    size="small"
+                    value={filters.package_name}
+                    onChange={(e) => setFilters({ ...filters, package_name: e.target.value })}
+                    sx={{ width: { xs: '100%', sm: '200px' } }}
+                    placeholder="输入套餐名称"
+                  />
+                  <TextField
+                    label="客户名称"
+                    variant="outlined"
+                    size="small"
+                    value={filters.customer_name}
+                    onChange={(e) => setFilters({ ...filters, customer_name: e.target.value })}
+                    sx={{ width: { xs: '100%', sm: '200px' } }}
+                    placeholder="输入客户名称"
+                  />
+                </Box>
+
+                {/* 第二行筛选字段 */}
+                <Box sx={{
+                  display: 'flex',
+                  gap: 2,
+                  flexWrap: 'wrap',
+                  width: isMobile ? '100%' : 'auto'
+                }}>
+                  <DatePicker
+                    views={['year', 'month']}
+                    label="开始月份"
+                    value={filters.purchase_start_month ? new Date(filters.purchase_start_month + '-01') : null}
+                    onChange={(date) => {
+                      const value = date ? format(date, 'yyyy-MM') : undefined;
+                      setFilters({ ...filters, purchase_start_month: value });
+                    }}
+                    sx={{ width: { xs: '100%', sm: '180px' } }}
+                    slotProps={{
+                      textField: {
+                        variant: "outlined",
+                        size: "small",
+                        placeholder: "选择开始月份"
+                      }
+                    }}
+                    format="yyyy年MM月"
+                  />
+                  <DatePicker
+                    views={['year', 'month']}
+                    label="结束月份"
+                    value={filters.purchase_end_month ? new Date(filters.purchase_end_month + '-01') : null}
+                    onChange={(date) => {
+                      const value = date ? format(date, 'yyyy-MM') : undefined;
+                      setFilters({ ...filters, purchase_end_month: value });
+                    }}
+                    sx={{ width: { xs: '100%', sm: '180px' } }}
+                    slotProps={{
+                      textField: {
+                        variant: "outlined",
+                        size: "small",
+                        placeholder: "选择结束月份"
+                      }
+                    }}
+                    format="yyyy年MM月"
+                  />
+                  <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
+                    <InputLabel>状态</InputLabel>
+                    <Select
+                      value={filters.status || ''}
+                      label="状态"
+                      onChange={(e) => setFilters({ ...filters, status: e.target.value as any || undefined })}
+                    >
+                      <MenuItem value="">所有状态</MenuItem>
+                      <MenuItem value="pending">待生效</MenuItem>
+                      <MenuItem value="active">生效</MenuItem>
+                      <MenuItem value="expired">已过期</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                {/* 操作按钮 */}
+                <Box sx={{
+                  display: 'flex',
+                  gap: 1,
+                  justifyContent: isMobile ? 'stretch' : 'flex-start',
+                  width: isMobile ? '100%' : 'auto',
+                  mt: isMobile ? 1 : 0
+                }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleSearch}
+                    disabled={loading}
+                    sx={{ width: isMobile ? '100%' : 'auto' }}
+                  >
+                    查询
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={handleReset}
+                    sx={{ width: isMobile ? '100%' : 'auto' }}
+                  >
+                    重置
+                  </Button>
+                </Box>
+              </Box>
+
+              {/* 移动端展开时添加关闭按钮 */}
+              {isMobile && (
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+                  <Button
+                    variant="text"
+                    onClick={() => setIsFilterExpanded(false)}
+                    startIcon={<ExpandLessIcon />}
+                    sx={{ color: 'text.secondary' }}
+                  >
+                    收起筛选
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )}
+        </Paper>
 
       {/* 列表区域 */}
       <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 } }}>
@@ -765,7 +885,7 @@ const RetailContractPage: React.FC = () => {
                   }}>
                     <TableHead>
                       <TableRow>
-                        <TableCell>合同编号</TableCell>
+                        <TableCell>合同名称</TableCell>
                         <TableCell>客户名称</TableCell>
                         <TableCell>套餐名称</TableCell>
                         <TableCell>购买电量(kWh)</TableCell>
@@ -794,7 +914,7 @@ const RetailContractPage: React.FC = () => {
                                 }}
                                 onClick={() => handleView(contract)}
                               >
-                                {contract.id}
+                                {contract.contract_name || '未命名合同'}
                               </Typography>
                             </TableCell>
                             <TableCell>{contract.customer_name}</TableCell>
