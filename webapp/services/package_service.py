@@ -108,6 +108,11 @@ class PackageService:
 
         items = []
         for doc in cursor:
+            # 统计该套餐的合同数
+            contract_count = self.db.retail_contracts.count_documents({
+                "package_id": str(doc["_id"])
+            })
+
             # 构建列表项数据
             list_item_data = {
                 "_id": doc["_id"],
@@ -123,7 +128,10 @@ class PackageService:
             # Use the list item model for lighter payload
             list_item = RetailPackageListItem(**list_item_data)
             # 使用 by_alias=False 确保输出 id 而不是 _id
-            items.append(list_item.dict(by_alias=False))
+            item_dict = list_item.dict(by_alias=False)
+            # 添加合同数虚拟字段
+            item_dict["contract_count"] = contract_count
+            items.append(item_dict)
 
         return {
             "total": total,
@@ -207,7 +215,7 @@ class PackageService:
             package_id: 套餐ID
 
         Returns:
-            套餐完整信息字典
+            套餐完整信息字典（包含合同数）
 
         Raises:
             ValueError: 套餐不存在或ID无效
@@ -220,8 +228,15 @@ class PackageService:
         if not doc:
             raise ValueError(f"套餐不存在: {package_id}")
 
+        # 统计该套餐的合同数
+        contract_count = self.db.retail_contracts.count_documents({
+            "package_id": package_id
+        })
+
         # 将 _id 转换为 id (前端期望的字段名)
         doc["id"] = str(doc.pop("_id"))
+        # 添加合同数虚拟字段
+        doc["contract_count"] = contract_count
         return doc
 
     def update_package(self, package_id: str, package_data: dict, operator: str) -> dict:

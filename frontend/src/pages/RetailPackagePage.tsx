@@ -26,6 +26,7 @@ interface Package {
   is_green_power: boolean;
   model_code: string; // <--- 更新
   status: 'draft' | 'active' | 'archived';
+  contract_count?: number; // 虚拟字段：合同数
   created_at: string;
   updated_at: string;
 }
@@ -686,13 +687,14 @@ const RetailPackagePage: React.FC = () => {
                         <TableCell>绿电套餐</TableCell>
                         <TableCell>定价模型</TableCell>
                         <TableCell>状态</TableCell>
+                        <TableCell>合同数</TableCell>
                         <TableCell>创建时间</TableCell>
                         <TableCell align="right">操作</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       <TableRow>
-                        <TableCell colSpan={7} sx={{ textAlign: 'center', py: 3 }}>
+                        <TableCell colSpan={8} sx={{ textAlign: 'center', py: 3 }}>
                           <Typography variant="body2" color="text.secondary">暂无数据</Typography>
                         </TableCell>
                       </TableRow>
@@ -736,6 +738,10 @@ const RetailPackagePage: React.FC = () => {
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body2" color="text.secondary">状态:</Typography>
                       <Chip label={statusMap[pkg.status] || pkg.status} size="small" color={getStatusChipColor(pkg.status)} />
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="body2" color="text.secondary">合同数:</Typography>
+                      <Typography variant="body2">{pkg.contract_count || 0}</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body2" color="text.secondary">创建时间:</Typography>
@@ -812,6 +818,7 @@ const RetailPackagePage: React.FC = () => {
                       <TableCell>绿电套餐</TableCell>
                       <TableCell>定价模型</TableCell>
                       <TableCell>状态</TableCell>
+                      <TableCell>合同数</TableCell>
                       <TableCell>创建时间</TableCell>
                       <TableCell align="right">操作</TableCell>
                     </TableRow>
@@ -858,6 +865,7 @@ const RetailPackagePage: React.FC = () => {
                               color={getStatusChipColor(pkg.status)}
                             />
                           </TableCell>
+                          <TableCell>{pkg.contract_count || 0}</TableCell>
                           <TableCell>{format(new Date(pkg.created_at), 'yyyy-MM-dd HH:mm')}</TableCell>
                           <TableCell align="right">
                             {canEdit(pkg.status) && (

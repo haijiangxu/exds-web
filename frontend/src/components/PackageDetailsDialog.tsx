@@ -106,6 +106,12 @@ export const PackageDetailsDialog: React.FC<PackageDetailsDialogProps> = ({
           </Box>
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
+          <Typography variant="body2" color="text.secondary">合同数</Typography>
+          <Typography variant="body1" sx={{ mt: 0.5 }}>
+            {data?.contract_count || 0}
+          </Typography>
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Typography variant="body2" color="text.secondary">创建时间</Typography>
           <Typography variant="body1" sx={{ mt: 0.5 }}>
             {data?.created_at ? format(new Date(data.created_at), 'yyyy-MM-dd HH:mm:ss') : '-'}
