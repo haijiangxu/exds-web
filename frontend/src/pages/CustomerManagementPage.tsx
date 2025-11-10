@@ -21,16 +21,20 @@ import {
     IconButton,
     Chip,
     InputAdornment,
-    Tooltip
+    Tooltip,
+    Collapse,
+    useTheme
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import {
     Edit as EditIcon,
     Delete as DeleteIcon,
     ContentCopy as CopyIcon,
     Search as SearchIcon,
-    ArrowBack as ArrowBackIcon
+    ArrowBack as ArrowBackIcon,
+    FilterList as FilterListIcon,
+    ExpandMore as ExpandMoreIcon,
+    ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate, useLocation, matchPath } from 'react-router-dom';
 import { Customer, CustomerListItem, CustomerListParams, PaginatedResponse } from '../api/customer';
@@ -93,6 +97,18 @@ export const CustomerManagementPage: React.FC = () => {
     const [mobileCustomerData, setMobileCustomerData] = useState<Customer | null>(null);
     const [mobileCustomerLoading, setMobileCustomerLoading] = useState(false);
     const [mobileCustomerError, setMobileCustomerError] = useState<string | null>(null);
+
+    // 移动端筛选折叠状态
+    const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+
+    // 检查是否有激活的筛选条件
+    const hasActiveFilters = Boolean(
+        searchParams.keyword ||
+        searchParams.user_type ||
+        searchParams.industry ||
+        searchParams.region ||
+        searchParams.status
+    );
 
     // 加载客户列表
     const loadCustomers = async () => {
@@ -597,90 +613,127 @@ export const CustomerManagementPage: React.FC = () => {
 
             {/* 查询筛选区域 */}
             <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <TextField
-                        label="客户名称"
-                        variant="outlined"
-                        size="small"
-                        value={searchParams.keyword || ''}
-                        onChange={(e) => handleFilterChange('keyword', e.target.value)}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <SearchIcon />
-                                </InputAdornment>
-                            ),
+                {/* 移动端折叠标题 */}
+                {isMobile ? (
+                    <Box
+                        onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                            py: 1
                         }}
-                        sx={{ width: { xs: '100%', sm: '200px' } }}
-                    />
-                    <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
-                        <InputLabel>用户类型</InputLabel>
-                        <Select
-                            value={searchParams.user_type || ''}
-                            label="用户类型"
-                            onChange={(e) => handleFilterChange('user_type', e.target.value)}
-                        >
-                            <MenuItem value="">全部</MenuItem>
-                            {customerApi.USER_TYPES.map((type) => (
-                                <MenuItem key={type} value={type}>
-                                    {type}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                    <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
-                        <InputLabel>行业</InputLabel>
-                        <Select
-                            value={searchParams.industry || ''}
-                            label="行业"
-                            onChange={(e) => handleFilterChange('industry', e.target.value)}
-                        >
-                            <MenuItem value="">全部</MenuItem>
-                            {customerApi.INDUSTRIES.map((industry) => (
-                                <MenuItem key={industry} value={industry}>
-                                    {industry}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                    <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
-                        <InputLabel>地市</InputLabel>
-                        <Select
-                            value={searchParams.region || ''}
-                            label="地市"
-                            onChange={(e) => handleFilterChange('region', e.target.value)}
-                        >
-                            <MenuItem value="">全部</MenuItem>
-                            {customerApi.REGIONS.map((region) => (
-                                <MenuItem key={region} value={region}>
-                                    {region}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                    <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
-                        <InputLabel>状态</InputLabel>
-                        <Select
-                            value={searchParams.status || ''}
-                            label="状态"
-                            onChange={(e) => {
-                                const targetValue = e.target.value as string;
-                                if (targetValue === '') {
-                                    handleFilterChange('status', undefined);
-                                } else {
-                                    handleFilterChange('status', targetValue as 'active' | 'inactive' | 'deleted');
-                                }
+                    >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <FilterListIcon />
+                            <Typography variant="subtitle1">筛选条件</Typography>
+                            {hasActiveFilters && (
+                                <Chip
+                                    label="已筛选"
+                                    size="small"
+                                    color="primary"
+                                    variant="outlined"
+                                />
+                            )}
+                        </Box>
+                        {isFilterExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                    </Box>
+                ) : null}
+
+                {/* 桌面端始终显示，移动端折叠显示 */}
+                <Collapse in={!isMobile || isFilterExpanded}>
+                    <Box sx={{
+                        display: 'flex',
+                        gap: 2,
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        mt: isMobile ? 1 : 0
+                    }}>
+                        <TextField
+                            label="客户名称"
+                            variant="outlined"
+                            size="small"
+                            value={searchParams.keyword || ''}
+                            onChange={(e) => handleFilterChange('keyword', e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon />
+                                    </InputAdornment>
+                                ),
                             }}
-                        >
-                            <MenuItem value="">所有</MenuItem>
-                            <MenuItem value="active">正常</MenuItem>
-                            <MenuItem value="inactive">停用</MenuItem>
-                            <MenuItem value="deleted">已删除</MenuItem>
-                        </Select>
-                    </FormControl>
-                    <Button variant="contained" onClick={handleSearch} disabled={loading}>刷新</Button>
-                    <Button variant="outlined" onClick={handleResetFilters}>重置</Button>
-                </Box>
+                            sx={{ width: { xs: '100%', sm: '200px' } }}
+                        />
+                        <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
+                            <InputLabel>用户类型</InputLabel>
+                            <Select
+                                value={searchParams.user_type || ''}
+                                label="用户类型"
+                                onChange={(e) => handleFilterChange('user_type', e.target.value)}
+                            >
+                                <MenuItem value="">全部</MenuItem>
+                                {customerApi.USER_TYPES.map((type) => (
+                                    <MenuItem key={type} value={type}>
+                                        {type}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
+                            <InputLabel>行业</InputLabel>
+                            <Select
+                                value={searchParams.industry || ''}
+                                label="行业"
+                                onChange={(e) => handleFilterChange('industry', e.target.value)}
+                            >
+                                <MenuItem value="">全部</MenuItem>
+                                {customerApi.INDUSTRIES.map((industry) => (
+                                    <MenuItem key={industry} value={industry}>
+                                        {industry}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
+                            <InputLabel>地市</InputLabel>
+                            <Select
+                                value={searchParams.region || ''}
+                                label="地市"
+                                onChange={(e) => handleFilterChange('region', e.target.value)}
+                            >
+                                <MenuItem value="">全部</MenuItem>
+                                {customerApi.REGIONS.map((region) => (
+                                    <MenuItem key={region} value={region}>
+                                        {region}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
+                            <InputLabel>状态</InputLabel>
+                            <Select
+                                value={searchParams.status || ''}
+                                label="状态"
+                                onChange={(e) => {
+                                    const targetValue = e.target.value as string;
+                                    if (targetValue === '') {
+                                        handleFilterChange('status', undefined);
+                                    } else {
+                                        handleFilterChange('status', targetValue as 'active' | 'inactive' | 'deleted');
+                                    }
+                                }}
+                            >
+                                <MenuItem value="">所有</MenuItem>
+                                <MenuItem value="active">正常</MenuItem>
+                                <MenuItem value="inactive">停用</MenuItem>
+                                <MenuItem value="deleted">已删除</MenuItem>
+                            </Select>
+                        </FormControl>
+                        <Button variant="contained" onClick={handleSearch} disabled={loading}>刷新</Button>
+                        <Button variant="outlined" onClick={handleResetFilters}>重置</Button>
+                    </Box>
+                </Collapse>
             </Paper>
 
             {/* 错误提示 */}

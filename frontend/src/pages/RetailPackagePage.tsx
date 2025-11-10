@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, IconButton, CircularProgress, Button, TextField, InputAdornment, Select, MenuItem, InputLabel, FormControl, SelectChangeEvent, Typography, TablePagination, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Alert, Tooltip, Snackbar } from '@mui/material';
+import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, IconButton, CircularProgress, Button, TextField, InputAdornment, Select, MenuItem, InputLabel, FormControl, SelectChangeEvent, Typography, TablePagination, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Alert, Tooltip, Snackbar, Collapse } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ArchiveIcon from '@mui/icons-material/Archive';
@@ -7,6 +7,9 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useParams, useNavigate, useLocation, matchPath } from 'react-router-dom';
 import { PageHeader } from '../components/PageHeader';
 import apiClient from '../api/client';
@@ -101,6 +104,18 @@ const RetailPackagePage: React.FC = () => {
   const [mobilePackageData, setMobilePackageData] = useState<Package | null>(null);
   const [mobilePackageLoading, setMobilePackageLoading] = useState(false);
   const [mobilePackageError, setMobilePackageError] = useState<string | null>(null);
+
+  // 移动端筛选折叠状态
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+
+  // 检查是否有激活的筛选条件
+  const hasActiveFilters = Boolean(
+    filters.keyword ||
+    filters.package_type ||
+    filters.is_green_power ||
+    filters.model_code ||
+    filters.status
+  );
 
   // 加载移动端套餐详情数据
   const loadMobilePackageData = async (packageId: string) => {
@@ -526,82 +541,118 @@ const RetailPackagePage: React.FC = () => {
   return (
     <Box>
 
-
       {/* Query Card */}
       <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 }, mb: 2 }}>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-          <TextField
-              label="套餐名称"
-              variant="outlined"
-              size="small"
-              value={filters.keyword}
-              onChange={handleKeywordChange}
-              InputProps={{
-                  startAdornment: (
-                      <InputAdornment position="start">
-                          <SearchIcon />
-                      </InputAdornment>
-                  ),
-              }}
-              sx={{ width: { xs: '100%', sm: '200px' } }}
-          />
-          <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
-              <InputLabel>套餐类型</InputLabel>
-              <Select
-                  name="package_type"
-                  value={filters.package_type}
-                  onChange={handleFilterChange}
-                  label="套餐类型"
-              >
-                  <MenuItem value="">所有</MenuItem>
-                  <MenuItem value="time_based">分时段</MenuItem>
-                  <MenuItem value="non_time_based">不分时段</MenuItem>
-              </Select>
-          </FormControl>
-          <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
-              <InputLabel>绿电套餐</InputLabel>
-              <Select
-                  name="is_green_power"
-                  value={filters.is_green_power}
-                  onChange={handleFilterChange}
-                  label="绿电套餐"
-              >
-                  <MenuItem value="">所有</MenuItem>
-                  <MenuItem value="true">是</MenuItem>
-                  <MenuItem value="false">否</MenuItem>
-              </Select>
-          </FormControl>
-          <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
-              <InputLabel>定价模型</InputLabel>
-              <Select
-                  name="model_code"
-                  value={filters.model_code}
-                  onChange={handleFilterChange}
-                  label="定价模型"
-              >
-                  <MenuItem value="">所有</MenuItem>
-                  {pricingModels.map(model => (
-                      <MenuItem key={model.model_code} value={model.model_code}>{model.display_name}</MenuItem>
-                  ))}
-              </Select>
-          </FormControl>
-          <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
-              <InputLabel>状态</InputLabel>
-              <Select
-                  name="status"
-                  value={filters.status}
-                  onChange={handleFilterChange}
-                  label="状态"
-              >
-                  <MenuItem value="">所有</MenuItem>
-                  <MenuItem value="draft">草稿</MenuItem>
-                  <MenuItem value="active">生效</MenuItem>
-                  <MenuItem value="archived">归档</MenuItem>
-              </Select>
-          </FormControl>
-          <Button variant="contained" onClick={handleSearch}>刷新</Button>
-          <Button variant="outlined" onClick={handleResetFilters}>重置</Button>
-        </Box>
+        {/* 移动端折叠标题 */}
+        {isMobile ? (
+          <Box
+            onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              py: 1
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <FilterListIcon />
+              <Typography variant="subtitle1">筛选条件</Typography>
+              {hasActiveFilters && (
+                <Chip
+                  label="已筛选"
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                />
+              )}
+            </Box>
+            {isFilterExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </Box>
+        ) : null}
+
+        {/* 桌面端始终显示，移动端折叠显示 */}
+        <Collapse in={!isMobile || isFilterExpanded}>
+          <Box sx={{
+            display: 'flex',
+            gap: 2,
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            mt: isMobile ? 1 : 0
+          }}>
+            <TextField
+                label="套餐名称"
+                variant="outlined"
+                size="small"
+                value={filters.keyword}
+                onChange={handleKeywordChange}
+                InputProps={{
+                    startAdornment: (
+                        <InputAdornment position="start">
+                            <SearchIcon />
+                        </InputAdornment>
+                    ),
+                }}
+                sx={{ width: { xs: '100%', sm: '200px' } }}
+            />
+            <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
+                <InputLabel>套餐类型</InputLabel>
+                <Select
+                    name="package_type"
+                    value={filters.package_type}
+                    onChange={handleFilterChange}
+                    label="套餐类型"
+                >
+                    <MenuItem value="">所有</MenuItem>
+                    <MenuItem value="time_based">分时段</MenuItem>
+                    <MenuItem value="non_time_based">不分时段</MenuItem>
+                </Select>
+            </FormControl>
+            <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
+                <InputLabel>绿电套餐</InputLabel>
+                <Select
+                    name="is_green_power"
+                    value={filters.is_green_power}
+                    onChange={handleFilterChange}
+                    label="绿电套餐"
+                >
+                    <MenuItem value="">所有</MenuItem>
+                    <MenuItem value="true">是</MenuItem>
+                    <MenuItem value="false">否</MenuItem>
+                </Select>
+            </FormControl>
+            <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
+                <InputLabel>定价模型</InputLabel>
+                <Select
+                    name="model_code"
+                    value={filters.model_code}
+                    onChange={handleFilterChange}
+                    label="定价模型"
+                >
+                    <MenuItem value="">所有</MenuItem>
+                    {pricingModels.map(model => (
+                        <MenuItem key={model.model_code} value={model.model_code}>{model.display_name}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+            <FormControl variant="outlined" size="small" sx={{ width: { xs: '100%', sm: '150px' } }}>
+                <InputLabel>状态</InputLabel>
+                <Select
+                    name="status"
+                    value={filters.status}
+                    onChange={handleFilterChange}
+                    label="状态"
+                >
+                    <MenuItem value="">所有</MenuItem>
+                    <MenuItem value="draft">草稿</MenuItem>
+                    <MenuItem value="active">生效</MenuItem>
+                    <MenuItem value="archived">归档</MenuItem>
+                </Select>
+            </FormControl>
+            <Button variant="contained" onClick={handleSearch}>刷新</Button>
+            <Button variant="outlined" onClick={handleResetFilters}>重置</Button>
+          </Box>
+        </Collapse>
       </Paper>
 
       {/* List Card */}
