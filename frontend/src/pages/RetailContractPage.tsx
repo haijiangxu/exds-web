@@ -18,17 +18,22 @@ import {
   ArrowBack as ArrowBackIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
-  FilterList as FilterListIcon
+  FilterList as FilterListIcon,
+  CloudUpload as CloudUploadIcon,
+  Download as DownloadIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate, useLocation, matchPath } from 'react-router-dom';
 import {
   getContracts,
   deleteContract,
   Contract,
-  ContractListParams
+  ContractListParams,
+  ImportResult
 } from '../api/retail-contracts';
 import { ContractEditorDialog } from '../components/ContractEditorDialog';
 import { ContractDetailsDialog } from '../components/ContractDetailsDialog';
+import { ContractImportDialog } from '../components/ContractImportDialog';
+import { ContractExportDialog } from '../components/ContractExportDialog';
 import { getContract } from '../api/retail-contracts';
 
 // 状态中文映射
@@ -118,6 +123,10 @@ const RetailContractPage: React.FC = () => {
   // 删除确认对话框状态
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contractToDelete, setContractToDelete] = useState<Contract | null>(null);
+
+  // 导入导出对话框状态
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
   // Snackbar状态
   const [snackbar, setSnackbar] = useState<{
@@ -279,6 +288,31 @@ const RetailContractPage: React.FC = () => {
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
     setContractToDelete(null);
+  };
+
+  // 导入导出处理函数
+  const handleImport = () => {
+    setIsImportDialogOpen(true);
+  };
+
+  const handleExport = () => {
+    setIsExportDialogOpen(true);
+  };
+
+  const handleImportSuccess = (result: ImportResult) => {
+    // 刷新数据
+    fetchContracts();
+
+    // 显示成功提示
+    if (result.success > 0) {
+      const message = result.failed === 0
+        ? `成功导入 ${result.success} 条合同数据！`
+        : `导入完成：成功 ${result.success} 条，失败 ${result.failed} 条`;
+
+      showSnackbar(message, result.failed > 0 ? 'warning' : 'success');
+    } else {
+      showSnackbar('导入失败，请检查数据格式', 'error');
+    }
   };
 
   const handleSearch = () => {
@@ -795,7 +829,7 @@ const RetailContractPage: React.FC = () => {
       {/* 列表区域 */}
       <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 } }}>
         {/* 工具栏 */}
-        <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
+        <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Button
             variant="contained"
             color="primary"
@@ -805,13 +839,15 @@ const RetailContractPage: React.FC = () => {
           </Button>
           <Button
             variant="outlined"
-            onClick={() => {/* TODO: 导入功能 */}}
+            onClick={handleImport}
+            startIcon={<DownloadIcon />}
           >
             导入
           </Button>
           <Button
             variant="outlined"
-            onClick={() => {/* TODO: 导出功能 */}}
+            onClick={handleExport}
+            startIcon={<CloudUploadIcon />}
           >
             导出
           </Button>
@@ -1012,6 +1048,20 @@ const RetailContractPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* 导入对话框 */}
+      <ContractImportDialog
+        open={isImportDialogOpen}
+        onClose={() => setIsImportDialogOpen(false)}
+        onSuccess={handleImportSuccess}
+      />
+
+      {/* 导出对话框 */}
+      <ContractExportDialog
+        open={isExportDialogOpen}
+        onClose={() => setIsExportDialogOpen(false)}
+        currentFilters={filters}
+      />
 
       {/* 全局 Snackbar 反馈 */}
       <Snackbar

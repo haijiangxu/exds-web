@@ -78,6 +78,31 @@ export interface ContractListParams {
   page_size?: number;
 }
 
+// 导入结果类型
+export interface ImportError {
+  row: number;
+  field: string;
+  value: any;
+  message: string;
+  suggestion?: string;
+}
+
+export interface ImportResult {
+  total: number;
+  success: number;
+  failed: number;
+  errors: ImportError[];
+}
+
+// 导出参数类型
+export interface ExportParams {
+  package_name?: string;
+  customer_name?: string;
+  status?: 'pending' | 'active' | 'expired' | 'all';
+  start_month?: string;
+  end_month?: string;
+}
+
 // API接口函数实现
 
 /**
@@ -128,7 +153,7 @@ export const deleteContract = (contractId: string) => {
 export const importContracts = (file: File) => {
   const formData = new FormData();
   formData.append('file', file);
-  return apiClient.post('/api/v1/retail-contracts/import', formData, {
+  return apiClient.post<ImportResult>('/api/v1/retail-contracts/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
 };
@@ -137,7 +162,7 @@ export const importContracts = (file: File) => {
  * 导出合同（Excel）
  * @param params 查询参数（用于筛选导出数据）
  */
-export const exportContracts = (params?: ContractListParams) => {
+export const exportContracts = (params?: ExportParams) => {
   return apiClient.get('/api/v1/retail-contracts/export', {
     params,
     responseType: 'blob'

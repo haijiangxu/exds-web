@@ -21,6 +21,8 @@ pydantic_core==2.41.4
 pymongo==4.15.3
 python-jose==3.5.0
 python-multipart==0.0.20
+pandas==2.3.3
+openpyxl==3.1.5
 rsa==4.9.1
 six==1.17.0
 slowapi==0.1.9
