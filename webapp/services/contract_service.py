@@ -119,10 +119,15 @@ class ContractService:
         contract.created_at = datetime.utcnow()
         contract.updated_at = datetime.utcnow()
 
-        # 6. 插入数据库
-        result = self.collection.insert_one(contract.model_dump(by_alias=True, exclude_unset=True))
+        # 6. 准备插入文档
+        doc_to_insert = contract.model_dump(by_alias=True, exclude_unset=True)
+        # 确保写入数据库的是ObjectId，而不是被Pydantic过早序列化为的字符串
+        doc_to_insert['_id'] = contract.id
 
-        # 7. 返回创建的合同信息（包含虚拟状态字段）
+        # 7. 插入数据库
+        result = self.collection.insert_one(doc_to_insert)
+
+        # 8. 返回创建的合同信息（包含虚拟状态字段）
         created_contract = self.collection.find_one({"_id": result.inserted_id})
         return self._convert_to_dict_with_status(created_contract)
 

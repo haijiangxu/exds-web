@@ -92,8 +92,13 @@ class CustomerService:
         customer.created_by = operator
         customer.updated_by = operator
 
+        # 准备插入文档
+        doc_to_insert = customer.model_dump(by_alias=True)
+        # 确保写入数据库的是ObjectId，而不是被Pydantic过早序列化为的字符串
+        doc_to_insert['_id'] = customer.id
+
         # 插入数据库
-        result = self.collection.insert_one(customer.model_dump(by_alias=True))
+        result = self.collection.insert_one(doc_to_insert)
 
         # 返回创建的客户信息
         created_customer = self.collection.find_one({"_id": result.inserted_id})
