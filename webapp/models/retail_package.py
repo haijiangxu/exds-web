@@ -77,6 +77,7 @@ class RetailPackageListItem(BaseMongoModel):
     model_code: str  # 定价模型代码
     is_green_power: bool = False
     status: Literal["draft", "active", "archived"]
+    contract_count: Optional[int] = Field(default=0, description="合同数（虚拟字段）")
     created_at: datetime
     updated_at: datetime
 
