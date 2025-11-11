@@ -67,10 +67,9 @@ class CustomerService:
         Raises:
             ValueError: 客户名称已存在
         """
-        # 检查客户名称是否已存在
+        # 检查客户名称是否已存在（所有状态）
         existing_customer = self.collection.find_one({
-            "user_name": customer_data.get("user_name"),
-            "status": {"$ne": "deleted"}
+            "user_name": customer_data.get("user_name")
         })
         if existing_customer:
             raise ValueError(f"客户名称 '{customer_data.get('user_name')}' 已存在")
@@ -120,10 +119,7 @@ class CustomerService:
         if not ObjectId.is_valid(customer_id):
             raise ValueError("无效的客户ID")
 
-        customer = self.collection.find_one({
-            "_id": ObjectId(customer_id),
-            "status": {"$ne": "deleted"}
-        })
+        customer = self.collection.find_one({"_id": ObjectId(customer_id)})
 
         if not customer:
             raise ValueError("客户不存在")
@@ -142,8 +138,8 @@ class CustomerService:
         Returns:
             客户列表响应
         """
-        # 构建查询条件
-        query = {"status": {"$ne": "deleted"}}
+        # 构建查询条件（移除了deleted状态的过滤，因为新状态体系中没有deleted）
+        query = {}
 
         # 添加筛选条件
         if filters.get("keyword"):
@@ -177,18 +173,58 @@ class CustomerService:
 
         # 转换为列表项格式
         items = []
-        for doc in cursor:
-            account_count = len(doc.get("utility_accounts", []))
+        customer_docs = list(cursor)
+
+        # 批量查询合同数据以获取签约电量
+        customer_ids = [str(doc["_id"]) for doc in customer_docs]
+        contracts_collection = self.db.retail_contracts
+
+        # 获取当前月份的起始时间（用于判断合同状态）
+        current_month = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        # 聚合每个客户的签约电量
+        # 只统计未过期的合同（purchase_end_month >= 当前月份）
+        contract_agg_pipeline = [
+            {
+                "$match": {
+                    "customer_id": {"$in": customer_ids},
+                    "purchase_end_month": {"$gte": current_month}
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$customer_id",
+                    "total_contracted": {"$sum": "$purchasing_electricity_quantity"}
+                }
+            }
+        ]
+
+        contract_results = list(contracts_collection.aggregate(contract_agg_pipeline))
+        # 构建客户ID到签约电量的映射
+        contracted_capacity_map = {
+            result["_id"]: result["total_contracted"]
+            for result in contract_results
+        }
+
+        for doc in customer_docs:
+            # 计算计量点总数
+            metering_point_count = 0
+            for account in doc.get("utility_accounts", []):
+                metering_point_count += len(account.get("metering_points", []))
+
+            # 从合同数据中获取签约电量
+            customer_id = str(doc["_id"])
+            contracted_capacity = contracted_capacity_map.get(customer_id)
+
             item = CustomerListItem(
-                id=str(doc["_id"]),
+                id=customer_id,
                 user_name=doc.get("user_name", ""),
-                short_name=doc.get("short_name", ""),
                 user_type=doc.get("user_type"),
                 industry=doc.get("industry"),
-                voltage=doc.get("voltage"),
                 region=doc.get("region"),
                 status=doc.get("status", "active"),
-                account_count=account_count,
+                metering_point_count=metering_point_count,
+                contracted_capacity=contracted_capacity,
                 created_at=doc.get("created_at"),
                 updated_at=doc.get("updated_at")
             )
@@ -214,25 +250,31 @@ class CustomerService:
             更新后的客户信息
 
         Raises:
-            ValueError: 客户不存在或客户名称已存在
+            ValueError: 客户不存在或客户名称已存在或状态不允许编辑
         """
         if not ObjectId.is_valid(customer_id):
             raise ValueError("无效的客户ID")
 
         # 检查客户是否存在
-        existing_customer = self.collection.find_one({
-            "_id": ObjectId(customer_id),
-            "status": {"$ne": "deleted"}
-        })
+        existing_customer = self.collection.find_one({"_id": ObjectId(customer_id)})
         if not existing_customer:
             raise ValueError("客户不存在")
+
+        current_status = existing_customer.get("status")
+
+        # 状态编辑权限检查
+        if current_status == "terminated":
+            raise ValueError("已终止的客户不可编辑")
+
+        # 如果尝试修改状态，需要通过状态转换方法，不允许直接修改
+        if "status" in customer_data and customer_data["status"] != current_status:
+            raise ValueError("不允许直接修改状态，请使用相应的状态转换操作")
 
         # 检查客户名称是否与其他客户重复
         new_user_name = customer_data.get("user_name")
         if new_user_name and new_user_name != existing_customer.get("user_name"):
             duplicate_customer = self.collection.find_one({
                 "user_name": new_user_name,
-                "status": {"$ne": "deleted"},
                 "_id": {"$ne": ObjectId(customer_id)}
             })
             if duplicate_customer:
@@ -270,24 +312,35 @@ class CustomerService:
 
     def delete_customer(self, customer_id: str) -> None:
         """
-        删除客户（软删除）
+        删除客户（物理删除，仅限意向客户）
+
+        根据业务规则：只有"意向客户"(prospect)状态才能被物理删除。
+        其他状态的客户不可删除，必须通过状态转换方法处理。
 
         Args:
             customer_id: 客户ID
 
         Raises:
-            ValueError: 客户不存在
+            ValueError: 客户不存在或状态不允许删除
         """
         if not ObjectId.is_valid(customer_id):
             raise ValueError("无效的客户ID")
 
-        result = self.collection.update_one(
-            {"_id": ObjectId(customer_id), "status": {"$ne": "deleted"}},
-            {"$set": {"status": "deleted", "updated_at": datetime.utcnow()}}
-        )
+        # 查找客户并检查状态
+        customer = self.collection.find_one({"_id": ObjectId(customer_id)})
 
-        if result.matched_count == 0:
-            raise ValueError("客户不存在或已删除")
+        if not customer:
+            raise ValueError("客户不存在")
+
+        # 只有意向客户可以删除
+        if customer.get("status") != "prospect":
+            raise ValueError("只有意向客户可以删除，其他状态的客户请使用状态转换操作")
+
+        # 物理删除
+        result = self.collection.delete_one({"_id": ObjectId(customer_id)})
+
+        if result.deleted_count == 0:
+            raise ValueError("删除失败")
 
     def add_utility_account(self, customer_id: str, account_data: dict, operator: str) -> dict:
         """
@@ -696,6 +749,296 @@ class CustomerService:
             # 这里可以根据需要实现单个更新的逻辑
             # 目前先返回全部更新的结果
             return self.sync_update_meter(meter_id, update_data, True, operator)
+
+    # ==================== 状态转换方法 ====================
+
+    def sign_contract(self, customer_id: str, operator: str, contract_id: Optional[str] = None) -> dict:
+        """
+        签约操作：将意向客户转换为待生效状态
+
+        状态流转：prospect → pending
+
+        Args:
+            customer_id: 客户ID
+            operator: 操作人
+            contract_id: 关联的合同ID（可选）
+
+        Returns:
+            更新后的客户信息
+
+        Raises:
+            ValueError: 客户不存在或状态不符合要求
+        """
+        if not ObjectId.is_valid(customer_id):
+            raise ValueError("无效的客户ID")
+
+        customer = self.collection.find_one({"_id": ObjectId(customer_id)})
+        if not customer:
+            raise ValueError("客户不存在")
+
+        current_status = customer.get("status")
+        if current_status != "prospect":
+            raise ValueError(f"只有意向客户可以执行签约操作，当前状态: {current_status}")
+
+        # 更新状态为待生效
+        update_data = {
+            "status": "pending",
+            "updated_at": datetime.utcnow(),
+            "updated_by": operator
+        }
+
+        # 如果提供了合同ID，也保存
+        if contract_id:
+            update_data["contract_id"] = contract_id
+
+        result = self.collection.update_one(
+            {"_id": ObjectId(customer_id)},
+            {"$set": update_data}
+        )
+
+        if result.matched_count == 0:
+            raise ValueError("更新失败")
+
+        updated_customer = self.collection.find_one({"_id": ObjectId(customer_id)})
+        return self._convert_to_dict(updated_customer)
+
+    def cancel_contract(self, customer_id: str, operator: str, reason: Optional[str] = None) -> dict:
+        """
+        撤销操作：将待生效客户转换为已终止状态
+
+        状态流转：pending → terminated
+
+        Args:
+            customer_id: 客户ID
+            operator: 操作人
+            reason: 撤销原因（可选）
+
+        Returns:
+            更新后的客户信息
+
+        Raises:
+            ValueError: 客户不存在或状态不符合要求
+        """
+        if not ObjectId.is_valid(customer_id):
+            raise ValueError("无效的客户ID")
+
+        customer = self.collection.find_one({"_id": ObjectId(customer_id)})
+        if not customer:
+            raise ValueError("客户不存在")
+
+        current_status = customer.get("status")
+        if current_status != "pending":
+            raise ValueError(f"只有待生效客户可以执行撤销操作，当前状态: {current_status}")
+
+        # 更新状态为已终止
+        update_data = {
+            "status": "terminated",
+            "updated_at": datetime.utcnow(),
+            "updated_by": operator
+        }
+
+        if reason:
+            update_data["termination_reason"] = reason
+
+        result = self.collection.update_one(
+            {"_id": ObjectId(customer_id)},
+            {"$set": update_data}
+        )
+
+        if result.matched_count == 0:
+            raise ValueError("更新失败")
+
+        updated_customer = self.collection.find_one({"_id": ObjectId(customer_id)})
+        return self._convert_to_dict(updated_customer)
+
+    def activate(self, customer_id: str, operator: str) -> dict:
+        """
+        生效操作：将待生效客户转换为执行中状态
+
+        状态流转：pending → active
+
+        Args:
+            customer_id: 客户ID
+            operator: 操作人
+
+        Returns:
+            更新后的客户信息
+
+        Raises:
+            ValueError: 客户不存在或状态不符合要求
+        """
+        if not ObjectId.is_valid(customer_id):
+            raise ValueError("无效的客户ID")
+
+        customer = self.collection.find_one({"_id": ObjectId(customer_id)})
+        if not customer:
+            raise ValueError("客户不存在")
+
+        current_status = customer.get("status")
+        if current_status != "pending":
+            raise ValueError(f"只有待生效客户可以执行生效操作，当前状态: {current_status}")
+
+        # 更新状态为执行中
+        result = self.collection.update_one(
+            {"_id": ObjectId(customer_id)},
+            {"$set": {
+                "status": "active",
+                "updated_at": datetime.utcnow(),
+                "updated_by": operator
+            }}
+        )
+
+        if result.matched_count == 0:
+            raise ValueError("更新失败")
+
+        updated_customer = self.collection.find_one({"_id": ObjectId(customer_id)})
+        return self._convert_to_dict(updated_customer)
+
+    def suspend(self, customer_id: str, operator: str, reason: Optional[str] = None) -> dict:
+        """
+        暂停操作：将执行中客户转换为已暂停状态
+
+        状态流转：active → suspended
+
+        Args:
+            customer_id: 客户ID
+            operator: 操作人
+            reason: 暂停原因（可选）
+
+        Returns:
+            更新后的客户信息
+
+        Raises:
+            ValueError: 客户不存在或状态不符合要求
+        """
+        if not ObjectId.is_valid(customer_id):
+            raise ValueError("无效的客户ID")
+
+        customer = self.collection.find_one({"_id": ObjectId(customer_id)})
+        if not customer:
+            raise ValueError("客户不存在")
+
+        current_status = customer.get("status")
+        if current_status != "active":
+            raise ValueError(f"只有执行中客户可以执行暂停操作，当前状态: {current_status}")
+
+        # 更新状态为已暂停
+        update_data = {
+            "status": "suspended",
+            "updated_at": datetime.utcnow(),
+            "updated_by": operator
+        }
+
+        if reason:
+            update_data["suspension_reason"] = reason
+
+        result = self.collection.update_one(
+            {"_id": ObjectId(customer_id)},
+            {"$set": update_data}
+        )
+
+        if result.matched_count == 0:
+            raise ValueError("更新失败")
+
+        updated_customer = self.collection.find_one({"_id": ObjectId(customer_id)})
+        return self._convert_to_dict(updated_customer)
+
+    def resume(self, customer_id: str, operator: str) -> dict:
+        """
+        恢复操作：将已暂停客户转换为执行中状态
+
+        状态流转：suspended → active
+
+        Args:
+            customer_id: 客户ID
+            operator: 操作人
+
+        Returns:
+            更新后的客户信息
+
+        Raises:
+            ValueError: 客户不存在或状态不符合要求
+        """
+        if not ObjectId.is_valid(customer_id):
+            raise ValueError("无效的客户ID")
+
+        customer = self.collection.find_one({"_id": ObjectId(customer_id)})
+        if not customer:
+            raise ValueError("客户不存在")
+
+        current_status = customer.get("status")
+        if current_status != "suspended":
+            raise ValueError(f"只有已暂停客户可以执行恢复操作，当前状态: {current_status}")
+
+        # 更新状态为执行中，清除暂停原因
+        result = self.collection.update_one(
+            {"_id": ObjectId(customer_id)},
+            {
+                "$set": {
+                    "status": "active",
+                    "updated_at": datetime.utcnow(),
+                    "updated_by": operator
+                },
+                "$unset": {"suspension_reason": ""}
+            }
+        )
+
+        if result.matched_count == 0:
+            raise ValueError("更新失败")
+
+        updated_customer = self.collection.find_one({"_id": ObjectId(customer_id)})
+        return self._convert_to_dict(updated_customer)
+
+    def terminate(self, customer_id: str, operator: str, reason: Optional[str] = None) -> dict:
+        """
+        终止操作：将执行中或已暂停客户转换为已终止状态
+
+        状态流转：active/suspended → terminated
+
+        Args:
+            customer_id: 客户ID
+            operator: 操作人
+            reason: 终止原因（可选）
+
+        Returns:
+            更新后的客户信息
+
+        Raises:
+            ValueError: 客户不存在或状态不符合要求
+        """
+        if not ObjectId.is_valid(customer_id):
+            raise ValueError("无效的客户ID")
+
+        customer = self.collection.find_one({"_id": ObjectId(customer_id)})
+        if not customer:
+            raise ValueError("客户不存在")
+
+        current_status = customer.get("status")
+        if current_status not in ["active", "suspended"]:
+            raise ValueError(f"只有执行中或已暂停客户可以执行终止操作，当前状态: {current_status}")
+
+        # 更新状态为已终止
+        update_data = {
+            "status": "terminated",
+            "updated_at": datetime.utcnow(),
+            "updated_by": operator
+        }
+
+        if reason:
+            update_data["termination_reason"] = reason
+
+        result = self.collection.update_one(
+            {"_id": ObjectId(customer_id)},
+            {"$set": update_data}
+        )
+
+        if result.matched_count == 0:
+            raise ValueError("更新失败")
+
+        updated_customer = self.collection.find_one({"_id": ObjectId(customer_id)})
+        return self._convert_to_dict(updated_customer)
+
+    # ==================== 辅助方法 ====================
 
     def _convert_to_dict(self, doc: Dict[str, Any]) -> dict:
         """将MongoDB文档转换为字典"""

@@ -38,7 +38,7 @@ export interface Customer {
   location?: Location;
   contact_person?: string;
   contact_phone?: string;
-  status: 'active' | 'inactive' | 'deleted';
+  status: 'prospect' | 'pending' | 'active' | 'suspended' | 'terminated';
   utility_accounts: UtilityAccount[];
   created_at: string;
   updated_at: string;
@@ -81,20 +81,14 @@ export interface CustomerUpdate {
 export interface CustomerListItem {
   id: string;
   user_name: string;
-  short_name: string;
   user_type?: string;
   industry?: string;
-  voltage?: string;
   region?: string;
-  status: 'active' | 'inactive' | 'deleted';
-  account_count: number;
+  status: 'prospect' | 'pending' | 'active' | 'suspended' | 'terminated';
+  metering_point_count: number;
+  contracted_capacity?: number | null;
   created_at: string;
   updated_at: string;
-  // 添加列表中需要的额外字段（虽然在后端CustomerListItem中没有，但前端显示需要）
-  contact_person?: string;
-  contact_phone?: string;
-  // 为了兼容表格中的utility_accounts字段
-  utility_accounts?: { length: number };
 }
 
 export interface CustomerListParams {
@@ -102,7 +96,7 @@ export interface CustomerListParams {
   user_type?: string;
   industry?: string;
   region?: string;
-  status?: 'active' | 'inactive' | 'deleted';
+  status?: 'prospect' | 'pending' | 'active' | 'suspended' | 'terminated';
 }
 
 export interface PaginatedResponse<T> {
@@ -283,6 +277,66 @@ export const syncUpdateMeter = (
   return apiClient.post(`/api/v1/meters/${meterId}/sync-update`, updateData);
 };
 
+// ==================== 客户状态转换接口 ====================
+
+/**
+ * 签约操作：将意向客户转换为待生效状态
+ * 状态流转：prospect → pending
+ * @param customerId 客户ID
+ * @param contractId 关联的合同ID（可选）
+ */
+export const signContract = (customerId: string, contractId?: string) => {
+  return apiClient.post<Customer>(`/api/v1/customers/${customerId}/sign-contract`, { contract_id: contractId });
+};
+
+/**
+ * 撤销操作：将待生效客户转换为已终止状态
+ * 状态流转：pending → terminated
+ * @param customerId 客户ID
+ * @param reason 撤销原因（可选）
+ */
+export const cancelContract = (customerId: string, reason?: string) => {
+  return apiClient.post<Customer>(`/api/v1/customers/${customerId}/cancel-contract`, { reason });
+};
+
+/**
+ * 生效操作：将待生效客户转换为执行中状态
+ * 状态流转：pending → active
+ * @param customerId 客户ID
+ */
+export const activate = (customerId: string) => {
+  return apiClient.post<Customer>(`/api/v1/customers/${customerId}/activate`, {});
+};
+
+/**
+ * 暂停操作：将执行中客户转换为已暂停状态
+ * 状态流转：active → suspended
+ * @param customerId 客户ID
+ * @param reason 暂停原因（可选）
+ */
+export const suspend = (customerId: string, reason?: string) => {
+  return apiClient.post<Customer>(`/api/v1/customers/${customerId}/suspend`, { reason });
+};
+
+/**
+ * 恢复操作：将已暂停客户转换为执行中状态
+ * 状态流转：suspended → active
+ * @param customerId 客户ID
+ */
+export const resume = (customerId: string) => {
+  return apiClient.post<Customer>(`/api/v1/customers/${customerId}/resume`, {});
+};
+
+/**
+ * 终止操作：将执行中或已暂停客户转换为已终止状态
+ * 状态流转：active/suspended → terminated
+ * @param customerId 客户ID
+ * @param reason 终止原因（可选）
+ */
+export const terminate = (customerId: string, reason?: string) => {
+  return apiClient.post<Customer>(`/api/v1/customers/${customerId}/terminate`, { reason });
+};
+
 // 常用查询选项
 export const USER_TYPES = [
   '标准工商业',
@@ -356,6 +410,14 @@ export default {
   // 数据一致性
   getMeterInfo,
   syncUpdateMeter,
+
+  // 状态转换操作
+  signContract,
+  cancelContract,
+  activate,
+  suspend,
+  resume,
+  terminate,
 
   // 常量
   USER_TYPES,

@@ -34,7 +34,13 @@ import {
     ArrowBack as ArrowBackIcon,
     FilterList as FilterListIcon,
     ExpandMore as ExpandMoreIcon,
-    ExpandLess as ExpandLessIcon
+    ExpandLess as ExpandLessIcon,
+    CheckCircle as CheckCircleIcon,
+    Cancel as CancelIcon,
+    PlayArrow as PlayArrowIcon,
+    Pause as PauseIcon,
+    Stop as StopIcon,
+    Description as DescriptionIcon,
 } from '@mui/icons-material';
 import { useParams, useNavigate, useLocation, matchPath } from 'react-router-dom';
 import { Customer, CustomerListItem, CustomerListParams, PaginatedResponse } from '../api/customer';
@@ -375,15 +381,95 @@ export const CustomerManagementPage: React.FC = () => {
         }
     };
 
+    // 状态转换操作
+    const handleSignContract = async (customer: CustomerListItem) => {
+        if (!window.confirm(`确定要将客户"${customer.user_name}"标记为已签约吗？`)) {
+            return;
+        }
+        try {
+            await customerApi.signContract(customer.id);
+            loadCustomers();
+        } catch (err: any) {
+            setError(err.response?.data?.detail || err.message || '签约操作失败');
+        }
+    };
+
+    const handleActivate = async (customer: CustomerListItem) => {
+        if (!window.confirm(`确定要将客户"${customer.user_name}"的合同标记为生效吗？`)) {
+            return;
+        }
+        try {
+            await customerApi.activate(customer.id);
+            loadCustomers();
+        } catch (err: any) {
+            setError(err.response?.data?.detail || err.message || '生效操作失败');
+        }
+    };
+
+    const handleSuspend = async (customer: CustomerListItem) => {
+        const reason = window.prompt(`请输入暂停客户"${customer.user_name}"的原因：`);
+        if (reason === null) return; // 用户取消
+        try {
+            await customerApi.suspend(customer.id, reason || undefined);
+            loadCustomers();
+        } catch (err: any) {
+            setError(err.response?.data?.detail || err.message || '暂停操作失败');
+        }
+    };
+
+    const handleResume = async (customer: CustomerListItem) => {
+        if (!window.confirm(`确定要恢复客户"${customer.user_name}"的服务吗？`)) {
+            return;
+        }
+        try {
+            await customerApi.resume(customer.id);
+            loadCustomers();
+        } catch (err: any) {
+            setError(err.response?.data?.detail || err.message || '恢复操作失败');
+        }
+    };
+
+    const handleTerminate = async (customer: CustomerListItem) => {
+        const reason = window.prompt(`请输入终止客户"${customer.user_name}"的原因：`);
+        if (reason === null) return; // 用户取消
+        if (!window.confirm('确定要终止该客户吗？终止后将无法再编辑。')) {
+            return;
+        }
+        try {
+            await customerApi.terminate(customer.id, reason || undefined);
+            loadCustomers();
+        } catch (err: any) {
+            setError(err.response?.data?.detail || err.message || '终止操作失败');
+        }
+    };
+
+    const handleCancelContract = async (customer: CustomerListItem) => {
+        const reason = window.prompt(`请输入撤销客户"${customer.user_name}"合同的原因：`);
+        if (reason === null) return; // 用户取消
+        if (!window.confirm('确定要撤销该客户的合同吗？撤销后客户将标记为已终止。')) {
+            return;
+        }
+        try {
+            await customerApi.cancelContract(customer.id, reason || undefined);
+            loadCustomers();
+        } catch (err: any) {
+            setError(err.response?.data?.detail || err.message || '撤销操作失败');
+        }
+    };
+
     // 获取状态颜色
     const getStatusColor = (status: string) => {
         switch (status) {
+            case 'prospect':
+                return 'default';     // 意向客户 - 灰色
+            case 'pending':
+                return 'info';        // 待生效 - 蓝色
             case 'active':
-                return 'success';
-            case 'inactive':
-                return 'warning';
-            case 'deleted':
-                return 'error';
+                return 'success';     // 执行中 - 绿色
+            case 'suspended':
+                return 'warning';     // 已暂停 - 橙色
+            case 'terminated':
+                return 'error';       // 已终止 - 红色
             default:
                 return 'default';
         }
@@ -392,20 +478,61 @@ export const CustomerManagementPage: React.FC = () => {
     // 获取状态文本
     const getStatusText = (status: string) => {
         switch (status) {
+            case 'prospect':
+                return '意向客户';
+            case 'pending':
+                return '待生效';
             case 'active':
-                return '正常';
-            case 'inactive':
-                return '停用';
-            case 'deleted':
-                return '已删除';
+                return '执行中';
+            case 'suspended':
+                return '已暂停';
+            case 'terminated':
+                return '已终止';
             default:
                 return status;
         }
     };
 
-    // 状态判断函数（根据状态机规则）
-    const canEdit = (status: string) => status === 'active' || status === 'inactive';
-    const canDelete = (status: string) => status === 'inactive';
+    // 权限判断函数（根据状态机规则）
+    // 编辑权限：只有terminated不可编辑
+    const canEdit = (status: string) => status !== 'terminated';
+    // 删除权限：只有prospect可以删除
+    const canDelete = (status: string) => status === 'prospect';
+
+    // 获取每个状态下可用的操作
+    const getAvailableActions = (status: string) => {
+        const actions = {
+            canSignContract: false,    // 签约
+            canCancelContract: false,  // 撤销
+            canActivate: false,        // 生效
+            canSuspend: false,         // 暂停
+            canResume: false,          // 恢复
+            canTerminate: false,       // 终止
+        };
+
+        switch (status) {
+            case 'prospect':
+                actions.canSignContract = true;  // 意向客户可以签约
+                break;
+            case 'pending':
+                actions.canCancelContract = true; // 待生效可以撤销
+                actions.canActivate = true;       // 待生效可以生效
+                break;
+            case 'active':
+                actions.canSuspend = true;        // 执行中可以暂停
+                actions.canTerminate = true;      // 执行中可以终止
+                break;
+            case 'suspended':
+                actions.canResume = true;         // 已暂停可以恢复
+                actions.canTerminate = true;      // 已暂停可以终止
+                break;
+            case 'terminated':
+                // 已终止无可用操作
+                break;
+        }
+
+        return actions;
+    };
 
     // 渲染移动端卡片布局
     const renderMobileCards = () => (
@@ -429,9 +556,6 @@ export const CustomerManagementPage: React.FC = () => {
 
                     {/* 基本信息 */}
                     <Box sx={{ mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">客户简称:</Typography>
-                        <Typography variant="body2" sx={{ mb: 1 }}>{customer.short_name || '-'}</Typography>
-
                         <Typography variant="body2" color="text.secondary">用户类型:</Typography>
                         <Typography variant="body2" sx={{ mb: 1 }}>{customer.user_type || '-'}</Typography>
 
@@ -442,20 +566,18 @@ export const CustomerManagementPage: React.FC = () => {
                     {/* 详细信息（两列布局） */}
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
                         <Box sx={{ flex: '1 1 45%' }}>
-                            <Typography variant="body2" color="text.secondary">电压等级:</Typography>
-                            <Typography variant="body2">{customer.voltage || '-'}</Typography>
-                        </Box>
-                        <Box sx={{ flex: '1 1 45%' }}>
                             <Typography variant="body2" color="text.secondary">地市:</Typography>
                             <Typography variant="body2">{customer.region || '-'}</Typography>
                         </Box>
                         <Box sx={{ flex: '1 1 45%' }}>
-                            <Typography variant="body2" color="text.secondary">联系人:</Typography>
-                            <Typography variant="body2">{customer.contact_person || '-'}</Typography>
+                            <Typography variant="body2" color="text.secondary">计量点数:</Typography>
+                            <Typography variant="body2">{customer.metering_point_count}</Typography>
                         </Box>
                         <Box sx={{ flex: '1 1 45%' }}>
-                            <Typography variant="body2" color="text.secondary">联系电话:</Typography>
-                            <Typography variant="body2">{customer.contact_phone || '-'}</Typography>
+                            <Typography variant="body2" color="text.secondary">签约电量:</Typography>
+                            <Typography variant="body2">
+                                {customer.contracted_capacity ? `${customer.contracted_capacity.toLocaleString()} kWh` : '/'}
+                            </Typography>
                         </Box>
                     </Box>
 
@@ -468,16 +590,11 @@ export const CustomerManagementPage: React.FC = () => {
                                 color={getStatusColor(customer.status) as any}
                                 size="small"
                             />
-                            <Chip
-                                label={`户号: ${customer.account_count}`}
-                                size="small"
-                                color="primary"
-                                variant="outlined"
-                            />
                         </Box>
 
                         {/* 操作按钮 */}
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                            {/* 基础操作 */}
                             {canEdit(customer.status) && (
                                 <Tooltip title="编辑客户">
                                     <IconButton
@@ -504,6 +621,57 @@ export const CustomerManagementPage: React.FC = () => {
                                     </IconButton>
                                 </Tooltip>
                             )}
+
+                            {/* 状态转换操作 */}
+                            {(() => {
+                                const actions = getAvailableActions(customer.status);
+                                return (
+                                    <>
+                                        {actions.canSignContract && (
+                                            <Tooltip title="签约">
+                                                <IconButton size="small" color="primary" onClick={() => handleSignContract(customer)}>
+                                                    <DescriptionIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                        {actions.canActivate && (
+                                            <Tooltip title="生效">
+                                                <IconButton size="small" color="success" onClick={() => handleActivate(customer)}>
+                                                    <PlayArrowIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                        {actions.canCancelContract && (
+                                            <Tooltip title="撤销">
+                                                <IconButton size="small" color="warning" onClick={() => handleCancelContract(customer)}>
+                                                    <CancelIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                        {actions.canSuspend && (
+                                            <Tooltip title="暂停">
+                                                <IconButton size="small" color="warning" onClick={() => handleSuspend(customer)}>
+                                                    <PauseIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                        {actions.canResume && (
+                                            <Tooltip title="恢复">
+                                                <IconButton size="small" color="success" onClick={() => handleResume(customer)}>
+                                                    <CheckCircleIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                        {actions.canTerminate && (
+                                            <Tooltip title="终止">
+                                                <IconButton size="small" color="error" onClick={() => handleTerminate(customer)}>
+                                                    <StopIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                    </>
+                                );
+                            })()}
                         </Box>
                     </Box>
                 </Paper>
@@ -720,14 +888,16 @@ export const CustomerManagementPage: React.FC = () => {
                                     if (targetValue === '') {
                                         handleFilterChange('status', undefined);
                                     } else {
-                                        handleFilterChange('status', targetValue as 'active' | 'inactive' | 'deleted');
+                                        handleFilterChange('status', targetValue as 'prospect' | 'pending' | 'active' | 'suspended' | 'terminated');
                                     }
                                 }}
                             >
                                 <MenuItem value="">所有</MenuItem>
-                                <MenuItem value="active">正常</MenuItem>
-                                <MenuItem value="inactive">停用</MenuItem>
-                                <MenuItem value="deleted">已删除</MenuItem>
+                                <MenuItem value="prospect">意向客户</MenuItem>
+                                <MenuItem value="pending">待生效</MenuItem>
+                                <MenuItem value="active">执行中</MenuItem>
+                                <MenuItem value="suspended">已暂停</MenuItem>
+                                <MenuItem value="terminated">已终止</MenuItem>
                             </Select>
                         </FormControl>
                         <Button variant="contained" onClick={handleSearch} disabled={loading}>刷新</Button>
@@ -784,13 +954,11 @@ export const CustomerManagementPage: React.FC = () => {
                             <TableHead>
                                 <TableRow>
                                     <TableCell sx={{ minWidth: 120 }}>客户名称</TableCell>
-                                    <TableCell sx={{ minWidth: 100 }}>客户简称</TableCell>
                                     <TableCell sx={{ minWidth: 100 }}>用户类型</TableCell>
                                     <TableCell sx={{ minWidth: 100 }}>行业</TableCell>
-                                    <TableCell sx={{ minWidth: 80 }}>电压等级</TableCell>
                                     <TableCell sx={{ minWidth: 100 }}>地市</TableCell>
-                                    <TableCell sx={{ minWidth: 120 }}>联系人</TableCell>
-                                    <TableCell sx={{ minWidth: 80 }}>户号数量</TableCell>
+                                    <TableCell sx={{ minWidth: 80 }}>计量点数</TableCell>
+                                    <TableCell sx={{ minWidth: 100 }}>签约电量(kWh)</TableCell>
                                     <TableCell sx={{ minWidth: 80 }}>状态</TableCell>
                                     <TableCell sx={{ minWidth: 120 }}>操作</TableCell>
                                 </TableRow>
@@ -798,13 +966,13 @@ export const CustomerManagementPage: React.FC = () => {
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                                        <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                                             <CircularProgress />
                                         </TableCell>
                                     </TableRow>
                                 ) : customers.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                                        <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                                             <Typography color="text.secondary">
                                                 暂无数据
                                             </Typography>
@@ -825,30 +993,19 @@ export const CustomerManagementPage: React.FC = () => {
                                                     {customer.user_name}
                                                 </Typography>
                                             </TableCell>
-                                            <TableCell>{customer.short_name}</TableCell>
                                             <TableCell>{customer.user_type || '-'}</TableCell>
                                             <TableCell>{customer.industry || '-'}</TableCell>
-                                            <TableCell>{customer.voltage || '-'}</TableCell>
                                             <TableCell>{customer.region || '-'}</TableCell>
-                                            <TableCell>
-                                                {customer.contact_person && (
-                                                    <Box>
-                                                        <Typography variant="body2">
-                                                            {customer.contact_person}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            {customer.contact_phone || '-'}
-                                                        </Typography>
-                                                    </Box>
-                                                )}
-                                            </TableCell>
                                             <TableCell align="center">
                                                 <Chip
-                                                    label={customer.account_count}
+                                                    label={customer.metering_point_count}
                                                     size="small"
                                                     color="primary"
                                                     variant="outlined"
                                                 />
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                {customer.contracted_capacity ? customer.contracted_capacity.toLocaleString() : '/'}
                                             </TableCell>
                                             <TableCell>
                                                 <Chip
@@ -858,7 +1015,8 @@ export const CustomerManagementPage: React.FC = () => {
                                                 />
                                             </TableCell>
                                             <TableCell align="right">
-                                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                                                    {/* 基础操作 */}
                                                     {canEdit(customer.status) && (
                                                         <Tooltip title="编辑客户">
                                                             <IconButton
@@ -885,6 +1043,57 @@ export const CustomerManagementPage: React.FC = () => {
                                                             </IconButton>
                                                         </Tooltip>
                                                     )}
+
+                                                    {/* 状态转换操作 */}
+                                                    {(() => {
+                                                        const actions = getAvailableActions(customer.status);
+                                                        return (
+                                                            <>
+                                                                {actions.canSignContract && (
+                                                                    <Tooltip title="签约">
+                                                                        <IconButton size="small" color="primary" onClick={() => handleSignContract(customer)}>
+                                                                            <DescriptionIcon fontSize="small" />
+                                                                        </IconButton>
+                                                                    </Tooltip>
+                                                                )}
+                                                                {actions.canActivate && (
+                                                                    <Tooltip title="生效">
+                                                                        <IconButton size="small" color="success" onClick={() => handleActivate(customer)}>
+                                                                            <PlayArrowIcon fontSize="small" />
+                                                                        </IconButton>
+                                                                    </Tooltip>
+                                                                )}
+                                                                {actions.canCancelContract && (
+                                                                    <Tooltip title="撤销">
+                                                                        <IconButton size="small" color="warning" onClick={() => handleCancelContract(customer)}>
+                                                                            <CancelIcon fontSize="small" />
+                                                                        </IconButton>
+                                                                    </Tooltip>
+                                                                )}
+                                                                {actions.canSuspend && (
+                                                                    <Tooltip title="暂停">
+                                                                        <IconButton size="small" color="warning" onClick={() => handleSuspend(customer)}>
+                                                                            <PauseIcon fontSize="small" />
+                                                                        </IconButton>
+                                                                    </Tooltip>
+                                                                )}
+                                                                {actions.canResume && (
+                                                                    <Tooltip title="恢复">
+                                                                        <IconButton size="small" color="success" onClick={() => handleResume(customer)}>
+                                                                            <CheckCircleIcon fontSize="small" />
+                                                                        </IconButton>
+                                                                    </Tooltip>
+                                                                )}
+                                                                {actions.canTerminate && (
+                                                                    <Tooltip title="终止">
+                                                                        <IconButton size="small" color="error" onClick={() => handleTerminate(customer)}>
+                                                                            <StopIcon fontSize="small" />
+                                                                        </IconButton>
+                                                                    </Tooltip>
+                                                                )}
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </Box>
                                             </TableCell>
                                         </TableRow>

@@ -83,8 +83,13 @@ class CustomerCreate(BaseModel):
 
 class Customer(BaseMongoModel, CustomerCreate):
     """客户完整模型"""
-    # 状态管理
-    status: Literal["active", "inactive", "deleted"] = "active"
+    # 状态管理（5个核心状态）
+    # prospect: 意向客户 - 默认初始状态，未签约
+    # pending: 待生效 - 已签约但未开始服务
+    # active: 执行中 - 核心活跃状态，正在提供服务
+    # suspended: 已暂停 - 临时冻结状态
+    # terminated: 已终止 - 合同结束，不可再编辑
+    status: Literal["prospect", "pending", "active", "suspended", "terminated"] = "prospect"
 
     # 审计字段
     created_at: datetime = Field(default_factory=datetime.utcnow, description="创建时间")
@@ -111,7 +116,7 @@ class CustomerUpdate(BaseModel):
     contact_phone: Optional[str] = Field(None, description="联系电话")
 
     # 状态管理
-    status: Optional[Literal["active", "inactive", "deleted"]] = Field(None, description="状态")
+    status: Optional[Literal["prospect", "pending", "active", "suspended", "terminated"]] = Field(None, description="状态")
 
     # 户号信息
     utility_accounts: Optional[List[UtilityAccount]] = Field(None, description="户号列表")
@@ -121,13 +126,12 @@ class CustomerListItem(BaseModel):
     """客户列表项模型"""
     id: str = Field(..., description="客户ID")
     user_name: str = Field(..., description="客户全称")
-    short_name: str = Field(..., description="客户简称")
     user_type: Optional[str] = Field(None, description="客户类型")
     industry: Optional[str] = Field(None, description="行业")
-    voltage: Optional[str] = Field(None, description="电压等级")
     region: Optional[str] = Field(None, description="地区")
-    status: Literal["active", "inactive", "deleted"] = Field(..., description="状态")
-    account_count: int = Field(..., description="户号数量")
+    status: Literal["prospect", "pending", "active", "suspended", "terminated"] = Field(..., description="状态")
+    metering_point_count: int = Field(..., description="计量点数量")
+    contracted_capacity: Optional[float] = Field(None, description="签约电量(kWh)")
     created_at: datetime = Field(..., description="创建时间")
     updated_at: datetime = Field(..., description="更新时间")
 
