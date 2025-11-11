@@ -140,7 +140,8 @@ export const CustomerManagementPage: React.FC = () => {
             setTotalCount(data.total);
         } catch (err: any) {
             console.error('加载客户列表失败:', err);
-            setError(err.response?.data?.detail || err.message || '加载客户列表失败');
+            const errorMessage = err.response?.data?.detail || err.message || '加载客户列表失败';
+            setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
             setCustomers([]);
             setTotalCount(0);
         } finally {
@@ -263,7 +264,8 @@ export const CustomerManagementPage: React.FC = () => {
                 setDialogOpen(true);
             } catch (err: any) {
                 console.error('获取客户详情失败:', err);
-                setError(err.response?.data?.detail || err.message || '获取客户详情失败');
+                const errorMessage = err.response?.data?.detail || err.message || '获取客户详情失败';
+                setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
             }
         }
     };
@@ -299,7 +301,8 @@ export const CustomerManagementPage: React.FC = () => {
                 })
                 .catch(err => {
                     console.error('获取客户详情失败:', err);
-                    setError(err.response?.data?.detail || err.message || '获取客户详情失败');
+                    const errorMessage = err.response?.data?.detail || err.message || '获取客户详情失败';
+                    setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
                 });
         }
     };
@@ -323,7 +326,8 @@ export const CustomerManagementPage: React.FC = () => {
                 })
                 .catch(err => {
                     console.error('获取客户详情失败:', err);
-                    setError(err.response?.data?.detail || err.message || '获取客户详情失败');
+                    const errorMessage = err.response?.data?.detail || err.message || '获取客户详情失败';
+                    setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
                 });
         }
     };
@@ -377,7 +381,8 @@ export const CustomerManagementPage: React.FC = () => {
             loadCustomers(); // 重新加载列表
         } catch (err: any) {
             console.error('删除客户失败:', err);
-            setError(err.response?.data?.detail || err.message || '删除客户失败');
+            const errorMessage = err.response?.data?.detail || err.message || '删除客户失败';
+        setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
         }
     };
 
@@ -390,7 +395,8 @@ export const CustomerManagementPage: React.FC = () => {
             await customerApi.signContract(customer.id);
             loadCustomers();
         } catch (err: any) {
-            setError(err.response?.data?.detail || err.message || '签约操作失败');
+            const errorMessage = err.response?.data?.detail || err.message || '签约操作失败';
+            setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
         }
     };
 
@@ -402,7 +408,8 @@ export const CustomerManagementPage: React.FC = () => {
             await customerApi.activate(customer.id);
             loadCustomers();
         } catch (err: any) {
-            setError(err.response?.data?.detail || err.message || '生效操作失败');
+            const errorMessage = err.response?.data?.detail || err.message || '生效操作失败';
+            setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
         }
     };
 
@@ -413,7 +420,8 @@ export const CustomerManagementPage: React.FC = () => {
             await customerApi.suspend(customer.id, reason || undefined);
             loadCustomers();
         } catch (err: any) {
-            setError(err.response?.data?.detail || err.message || '暂停操作失败');
+            const errorMessage = err.response?.data?.detail || err.message || '暂停操作失败';
+            setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
         }
     };
 
@@ -425,7 +433,8 @@ export const CustomerManagementPage: React.FC = () => {
             await customerApi.resume(customer.id);
             loadCustomers();
         } catch (err: any) {
-            setError(err.response?.data?.detail || err.message || '恢复操作失败');
+            const errorMessage = err.response?.data?.detail || err.message || '恢复操作失败';
+            setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
         }
     };
 
@@ -439,7 +448,8 @@ export const CustomerManagementPage: React.FC = () => {
             await customerApi.terminate(customer.id, reason || undefined);
             loadCustomers();
         } catch (err: any) {
-            setError(err.response?.data?.detail || err.message || '终止操作失败');
+            const errorMessage = err.response?.data?.detail || err.message || '终止操作失败';
+            setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
         }
     };
 
@@ -453,7 +463,8 @@ export const CustomerManagementPage: React.FC = () => {
             await customerApi.cancelContract(customer.id, reason || undefined);
             loadCustomers();
         } catch (err: any) {
-            setError(err.response?.data?.detail || err.message || '撤销操作失败');
+            const errorMessage = err.response?.data?.detail || err.message || '撤销操作失败';
+            setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
         }
     };
 

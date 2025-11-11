@@ -47,7 +47,11 @@
       "Bash(timeout:*)",
       "Bash(start:*)",
       "Bash(tmpuvicorn.out.log:*)",
-      "Bash(tmpuvicorn.err.log)"
+      "Bash(tmpuvicorn.err.log)",
+      "Bash(git push:*)",
+      "Bash(cat:*)",
+      "Bash(tasklist:*)",
+      "Bash(wmic process:*)"
     ],
     "deny": [],
     "ask": []
