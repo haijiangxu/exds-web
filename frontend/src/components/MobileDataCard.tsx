@@ -12,6 +12,7 @@ interface SGCCPriceData {
 
 interface MobileDataCardProps {
     data: SGCCPriceData;
+    onViewPdf: () => void; // Add this prop to handle the action in the parent
 }
 
 const DataRow: React.FC<{ label: string; value: string | number }> = ({ label, value }) => (
@@ -21,12 +22,7 @@ const DataRow: React.FC<{ label: string; value: string | number }> = ({ label, v
     </Box>
 );
 
-export const MobileDataCard: React.FC<MobileDataCardProps> = ({ data }) => {
-    const openPdf = () => {
-        const url = `http://${window.location.hostname}:8005/api/v1/prices/sgcc/${data._id}/pdf`;
-        window.open(url, '_blank');
-    };
-
+export const MobileDataCard: React.FC<MobileDataCardProps> = ({ data, onViewPdf }) => {
     return (
         <Paper sx={{ p: 2, mb: 2 }} elevation={2}>
             <Typography variant="h6" gutterBottom>{data._id} 月份</Typography>
@@ -45,7 +41,7 @@ export const MobileDataCard: React.FC<MobileDataCardProps> = ({ data }) => {
             />
             <Divider sx={{ mt: 1 }} />
             <Box sx={{ mt: 2, textAlign: 'right' }}>
-                <Button variant="contained" size="small" onClick={openPdf}>
+                <Button variant="contained" size="small" onClick={onViewPdf}>
                     查看公告
                 </Button>
             </Box>

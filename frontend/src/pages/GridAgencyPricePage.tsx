@@ -115,6 +115,22 @@ const GridAgencyPricePage: React.FC = () => {
 
     const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
 
+    const handleViewPdf = async (id: string | number) => {
+        try {
+            const response = await apiClient.get(`/api/v1/prices/sgcc/${id}/pdf`, {
+                responseType: 'blob', // Important: expect a binary response
+            });
+            const file = new Blob([response.data], { type: 'application/pdf' });
+            const fileURL = URL.createObjectURL(file);
+            window.open(fileURL, '_blank');
+            // Optional: Clean up the object URL after a short delay
+            setTimeout(() => URL.revokeObjectURL(fileURL), 100);
+        } catch (error) {
+            console.error('Error fetching PDF:', error);
+            setError('无法加载PDF文件，请检查网络或联系管理员。');
+        }
+    };
+
     // Define columns here to avoid re-creation on every render
     const columns: GridColDef[] = [
         { field: '_id', headerName: '月份', width: 120 },
@@ -162,10 +178,7 @@ const GridAgencyPricePage: React.FC = () => {
                 <Button
                     variant="contained"
                     size="small"
-                    onClick={() => {
-                        const url = `http://${window.location.hostname}:8005/api/v1/prices/sgcc/${params.id}/pdf`;
-                        window.open(url, '_blank');
-                    }}
+                    onClick={() => handleViewPdf(params.id)}
                 >
                     查看公告
                 </Button>
@@ -338,7 +351,11 @@ const GridAgencyPricePage: React.FC = () => {
                 {isMobile ? (
                     <Box sx={{ mt: 2 }}>
                         {gridData.map((row) => (
-                            <MobileDataCard key={row._id} data={row} />
+                            <MobileDataCard 
+                                key={row._id} 
+                                data={row} 
+                                onViewPdf={() => handleViewPdf(row._id)} 
+                            />
                         ))}
                     </Box>
                 ) : (
